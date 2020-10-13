@@ -88,7 +88,17 @@ void Error_Handler(void);
 #define CS_DAC_Pin GPIO_PIN_7
 #define CS_DAC_GPIO_Port GPIOB
 /* USER CODE BEGIN Private defines */
-
+enum DISPLAY_STATE {
+    STATE_SPLASH,
+    STATE_MAIN,
+    STATE_CONFIRM,
+};
+typedef struct {
+    enum DISPLAY_STATE display;
+    uint8_t dac_value;
+    uint8_t uv_enabled;
+    uint8_t ticks_enabled;
+} state_t;
 /* USER CODE END Private defines */
 
 #ifdef __cplusplus

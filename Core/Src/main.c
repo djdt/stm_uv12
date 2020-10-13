@@ -22,6 +22,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "mcp48fvb.h"
 #include "oled0010.h"
 /* USER CODE END Includes */
 
@@ -40,24 +41,29 @@
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
+RTC_HandleTypeDef hrtc;
+
 SPI_HandleTypeDef hspi1;
 
 TIM_HandleTypeDef htim14;
 
 /* USER CODE BEGIN PV */
-uint16_t pins[8] = { 0, 0, 0, 0, DB4_Pin, DB5_Pin, DB6_Pin, DB7_Pin };
+mcp48fvb_t mcp = {
+    &hspi1,
+    CS_DAC_GPIO_Port, CS_DAC_Pin,
+    LAT0_GPIO_Port, LAT0_Pin
+};
+
+uint16_t db_pins[8] = { 0, 0, 0, 0, DB4_Pin, DB5_Pin, DB6_Pin, DB7_Pin };
 oled0010_t oled = {
-    RS_GPIO_Port,
-    RS_Pin,
-    RW_GPIO_Port,
-    RW_Pin,
-    E_GPIO_Port,
-    E_Pin,
-    DB4_GPIO_Port,
-    pins,
+    RS_GPIO_Port, RS_Pin,
+    RW_GPIO_Port, RW_Pin,
+    E_GPIO_Port, E_Pin,
+    DB4_GPIO_Port, db_pins,
     0
 };
 
+state_t state = { STATE_MAIN, 0, 0 };
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -65,13 +71,35 @@ void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_SPI1_Init(void);
 static void MX_TIM14_Init(void);
+static void MX_RTC_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-uint8_t enable_pressed_flag = 0;
+void update_from_state(state_t* state)
+{
+    if (state->uv_enabled) {
+        HAL_GPIO_WritePin(Enable_GPIO_Port, Enable_Pin, GPIO_PIN_SET);
+    } else {
+        HAL_GPIO_WritePin(Enable_GPIO_Port, Enable_Pin, GPIO_PIN_RESET);
+    }
+    mcp_set_dac(&mcp, state->dac_value);
+}
+
+void get_time_string(char* str)
+{
+    RTC_TimeTypeDef t;
+    RTC_DateTypeDef d;
+    HAL_RTC_GetTime(&hrtc, &t, RTC_FORMAT_BCD);
+    HAL_RTC_GetDate(&hrtc, &d, RTC_FORMAT_BCD);
+
+    str[0] = (t.Minutes >> 4) + '0';
+    str[1] = (t.Minutes & 0x0f) + '0';
+    str[3] = (t.Seconds >> 4) + '0';
+    str[4] = (t.Seconds & 0x0f) + '0';
+}
 /* USER CODE END 0 */
 
 /**
@@ -81,7 +109,7 @@ uint8_t enable_pressed_flag = 0;
 int main(void)
 {
     /* USER CODE BEGIN 1 */
-
+    char time_string[] = "00:00";
     /* USER CODE END 1 */
 
     /* MCU Configuration--------------------------------------------------------*/
@@ -103,40 +131,70 @@ int main(void)
     MX_GPIO_Init();
     MX_SPI1_Init();
     MX_TIM14_Init();
+    MX_RTC_Init();
     /* USER CODE BEGIN 2 */
+    // Disable interrupts
+    HAL_NVIC_DisableIRQ(RTC_IRQn);
+    HAL_NVIC_DisableIRQ(EXTI4_15_IRQn);
+
     // Ensure that the UV is not enabled
     HAL_GPIO_WritePin(Enable_GPIO_Port, Enable_Pin, GPIO_PIN_RESET);
 
-    HAL_Delay(100);
+    // Init the DAC
+    HAL_Delay(50);
+    mcp_init(&mcp, MCP_VREF_GAP, MCP_PWRD_NORM, MCP_GAIN_1X);
+    mcp_set_dac(&mcp, 255);
+
     // Start the display
     oled_init(&oled,
         OLED_FS_4BIT | OLED_FS_2LINES | OLED_FS_FONT_SMALL | OLED_FS_FONT_WEST_EUR2,
         OLED_DC_BLINK_OFF | OLED_DC_CURSOR_OFF,
         OLED_EM_INC | OLED_EM_DISP_SHIFT_OFF);
-    HAL_Delay(100);
 
     // Print welcome msg
     oled_print(&oled, "\x1d"
                       "Cell Destroyer"
                       "\x1d");
     oled_move_cursor(&oled, 0, 1);
-    oled_print(&oled, "          v0.0.1");
-    HAL_Delay(5000);
+    oled_print(&oled, "          v0.1.0");
+    HAL_Delay(3000);
 
-    /* update_oled(&oled); */
-
+    // Reenable the button interrupts
+    HAL_NVIC_EnableIRQ(EXTI4_15_IRQn);
+    uint8_t i = 0;
     /* USER CODE END 2 */
 
     /* Infinite loop */
     /* USER CODE BEGIN WHILE */
     while (1) {
-        /* HAL_GPIO_WritePin(Enable_GPIO_Port, Enable_Pin, GPIO_PIN_SET); */
-        /* HAL_GPIO_WritePin(Enable_GPIO_Port, Enable_Pin, GPIO_PIN_RESET); */
-        /* HAL_Delay(1000); */
-        HAL_Delay(10);
+        HAL_NVIC_DisableIRQ(RTC_IRQn);
+        GPIO_PinState uv_enabled = HAL_GPIO_ReadPin(Enable_GPIO_Port, Enable_Pin);
+        // Update the display
+        oled_move_cursor(&oled, 0, 0);
+        if (uv_enabled) {
+            oled_print(&oled, "UVA On     ");
+            // Print time
+            get_time_string(time_string);
+            oled_print(&oled, time_string);
+            oled_move_cursor(&oled, 0, 1);
+            char s[2] = { '\0' };
+            s[0] = (char)(i + '0');
+            oled_print(&oled, s);
+
+            /* oled_move_cursor(&oled, 0, 1); */
+            /* oled_print(&oled, "          J/m2/s"); */
+        } else {
+            oled_print(&oled, "UVA Off         ");
+            oled_move_cursor(&oled, 0, 1);
+            oled_print(&oled, "          J/m2/s");
+        }
         /* USER CODE END WHILE */
 
         /* USER CODE BEGIN 3 */
+        /* HAL_PWR_EnterSTOPMode(PWR_LOWPOWERREGULATOR_ON, PWR_STOPENTRY_WFE); */
+        HAL_NVIC_EnableIRQ(RTC_IRQn);
+        HAL_Delay(100);
+        i += 1;
     }
     /* USER CODE END 3 */
 }
@@ -149,13 +207,15 @@ void SystemClock_Config(void)
 {
     RCC_OscInitTypeDef RCC_OscInitStruct = { 0 };
     RCC_ClkInitTypeDef RCC_ClkInitStruct = { 0 };
+    RCC_PeriphCLKInitTypeDef PeriphClkInit = { 0 };
 
     /** Initializes the RCC Oscillators according to the specified parameters
   * in the RCC_OscInitTypeDef structure.
   */
-    RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI;
+    RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI | RCC_OSCILLATORTYPE_LSI;
     RCC_OscInitStruct.HSIState = RCC_HSI_ON;
     RCC_OscInitStruct.HSICalibrationValue = RCC_HSICALIBRATION_DEFAULT;
+    RCC_OscInitStruct.LSIState = RCC_LSI_ON;
     RCC_OscInitStruct.PLL.PLLState = RCC_PLL_NONE;
     if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK) {
         Error_Handler();
@@ -171,6 +231,85 @@ void SystemClock_Config(void)
     if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_0) != HAL_OK) {
         Error_Handler();
     }
+    PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_RTC;
+    PeriphClkInit.RTCClockSelection = RCC_RTCCLKSOURCE_LSI;
+    if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInit) != HAL_OK) {
+        Error_Handler();
+    }
+}
+
+/**
+  * @brief RTC Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_RTC_Init(void)
+{
+
+    /* USER CODE BEGIN RTC_Init 0 */
+
+    /* USER CODE END RTC_Init 0 */
+
+    RTC_TimeTypeDef sTime = { 0 };
+    RTC_DateTypeDef sDate = { 0 };
+    RTC_AlarmTypeDef sAlarm = { 0 };
+
+    /* USER CODE BEGIN RTC_Init 1 */
+
+    /* USER CODE END RTC_Init 1 */
+    /** Initialize RTC Only
+  */
+    hrtc.Instance = RTC;
+    hrtc.Init.HourFormat = RTC_HOURFORMAT_24;
+    hrtc.Init.AsynchPrediv = 128 - 1;
+    hrtc.Init.SynchPrediv = 312 - 1;
+    hrtc.Init.OutPut = RTC_OUTPUT_DISABLE;
+    hrtc.Init.OutPutPolarity = RTC_OUTPUT_POLARITY_HIGH;
+    hrtc.Init.OutPutType = RTC_OUTPUT_TYPE_OPENDRAIN;
+    if (HAL_RTC_Init(&hrtc) != HAL_OK) {
+        Error_Handler();
+    }
+
+    /* USER CODE BEGIN Check_RTC_BKUP */
+
+    /* USER CODE END Check_RTC_BKUP */
+
+    /** Initialize RTC and set the Time and Date
+  */
+    sTime.Hours = 0x0;
+    sTime.Minutes = 0x0;
+    sTime.Seconds = 0x0;
+    sTime.DayLightSaving = RTC_DAYLIGHTSAVING_NONE;
+    sTime.StoreOperation = RTC_STOREOPERATION_RESET;
+    if (HAL_RTC_SetTime(&hrtc, &sTime, RTC_FORMAT_BCD) != HAL_OK) {
+        Error_Handler();
+    }
+    sDate.WeekDay = RTC_WEEKDAY_MONDAY;
+    sDate.Month = RTC_MONTH_JANUARY;
+    sDate.Date = 0x1;
+    sDate.Year = 0x0;
+
+    if (HAL_RTC_SetDate(&hrtc, &sDate, RTC_FORMAT_BCD) != HAL_OK) {
+        Error_Handler();
+    }
+    /** Enable the Alarm A
+  */
+    sAlarm.AlarmTime.Hours = 0x0;
+    sAlarm.AlarmTime.Minutes = 0x0;
+    sAlarm.AlarmTime.Seconds = 0x0;
+    sAlarm.AlarmTime.SubSeconds = 0x0;
+    sAlarm.AlarmTime.DayLightSaving = RTC_DAYLIGHTSAVING_NONE;
+    sAlarm.AlarmTime.StoreOperation = RTC_STOREOPERATION_RESET;
+    sAlarm.AlarmMask = RTC_ALARMMASK_SECONDS;
+    sAlarm.AlarmSubSecondMask = RTC_ALARMSUBSECONDMASK_ALL;
+    sAlarm.AlarmDateWeekDaySel = RTC_ALARMDATEWEEKDAYSEL_DATE;
+    sAlarm.AlarmDateWeekDay = 0x1;
+    sAlarm.Alarm = RTC_ALARM_A;
+    if (HAL_RTC_SetAlarm_IT(&hrtc, &sAlarm, RTC_FORMAT_BCD) != HAL_OK) {
+        Error_Handler();
+    }
+    /* USER CODE BEGIN RTC_Init 2 */
+    /* USER CODE END RTC_Init 2 */
 }
 
 /**
@@ -192,7 +331,7 @@ static void MX_SPI1_Init(void)
     hspi1.Instance = SPI1;
     hspi1.Init.Mode = SPI_MODE_MASTER;
     hspi1.Init.Direction = SPI_DIRECTION_2LINES;
-    hspi1.Init.DataSize = SPI_DATASIZE_4BIT;
+    hspi1.Init.DataSize = SPI_DATASIZE_8BIT;
     hspi1.Init.CLKPolarity = SPI_POLARITY_LOW;
     hspi1.Init.CLKPhase = SPI_PHASE_1EDGE;
     hspi1.Init.NSS = SPI_NSS_SOFT;
