@@ -3,14 +3,14 @@
 
 #include "stm32f0xx_hal.h"
 
-#define MCP_CMD_WRITE 0x00
-#define MCP_CMD_READ 0x06
+#define MCP_CMD_WRITE 0x00 << 1
+#define MCP_CMD_READ 0x03 << 1
 
-#define MCP_ADR_DAC0 0x00 << 2
-#define MCP_ADR_DAC1 0x01 << 2
-#define MCP_ADR_VREF 0x08 << 2
-#define MCP_ADR_PWRD 0x09 << 2
-#define MCP_ADR_GAIN 0x0a << 2
+#define MCP_ADR_DAC0 0x00 << 3
+#define MCP_ADR_DAC1 0x01 << 3
+#define MCP_ADR_VREF 0x08 << 3
+#define MCP_ADR_PWRD 0x09 << 3
+#define MCP_ADR_GAIN 0x0a << 3
 
 #define MCP_VREF_VDD 0x00
 #define MCP_VREF_GAP 0x01
@@ -23,8 +23,8 @@
 #define MCP_PWRD_OPEN 0x03
 
 #define MCP_GAIN_1X 0x00
-#define MCP_GAIN_2X 0x80
-#define MCP_GAIN_POR 0x40
+#define MCP_GAIN_2X 0x00
+#define MCP_GAIN_POR 0x80
 
 typedef struct {
     SPI_HandleTypeDef* spi;
