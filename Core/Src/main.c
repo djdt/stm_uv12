@@ -171,33 +171,37 @@ int main(void)
     /* USER CODE BEGIN WHILE */
     while (1) {
         HAL_NVIC_DisableIRQ(RTC_IRQn);
-        // Update DAC and enable
-        if (state.update) {
-            HAL_GPIO_WritePin(Enable_GPIO_Port, Enable_Pin,
-                state.enabled ? GPIO_PIN_SET : GPIO_PIN_RESET);
-            mcp_set_dac(&mcp, state.dac);
-            state.update = 0;
-            RTC_TimeTypeDef t;
-            HAL_RTC_SetTime(&hrtc, &t, RTC_FORMAT_BCD);
-        }
+
         // Update the display
         oled_move_cursor(&oled, 0, 0);
         if (state.enabled) {
             get_time_string(time_string);
-            get_dac_string(dac_string, state.dac);
-
             oled_print(&oled, "UVA On     ");
             // Print time
             oled_print(&oled, time_string);
-            oled_move_cursor(&oled, 0, 1);
-            oled_print(&oled, dac_string);
-            oled_print(&oled, "       J/m2/s");
         } else {
             oled_print(&oled, "UVA Off         ");
+        }
+
+        if (state.update) {
+            mcp_set_dac(&mcp, state.dac);
+
             oled_move_cursor(&oled, 0, 1);
+            get_dac_string(dac_string, state.dac);
             oled_print(&oled, dac_string);
             oled_print(&oled, "       J/m2/s");
         }
+
+        // Update DAC and enable
+        if (state.update == 2) {
+            HAL_GPIO_WritePin(Enable_GPIO_Port, Enable_Pin,
+                state.enabled ? GPIO_PIN_SET : GPIO_PIN_RESET);
+            state.update = 0;
+            RTC_TimeTypeDef t;
+            HAL_RTC_SetTime(&hrtc, &t, RTC_FORMAT_BCD);
+        }
+
+        state.update = 0;
         /* USER CODE END WHILE */
 
         /* USER CODE BEGIN 3 */

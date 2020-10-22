@@ -180,19 +180,19 @@ void HAL_GPIO_EXTI_Callback(uint16_t pin)
         if ((len > SHORT_PRESS) && (len < LONG_PRESS)) {
             switch (pin) {
             case S1_Pin:
-                if (state.dac > DACMIN) {
-                    state.dac -= 1;
+                if (state.dac > (DACMIN + 10)) {
+                    state.dac -= 10;
                     state.update = 1;
                 }
                 break;
             case S2_Pin:
-                if (state.dac < DACMAX) {
-                    state.dac += 1;
+                if (state.dac < (DACMAX - 10)) {
+                    state.dac += 10;
                     state.update = 1;
                 }
                 break;
             case S3_Pin:
-                state.update = 1; // Toggle enabled
+                state.update = 2; // Toggle enabled
                 state.enabled ^= 1;
                 HAL_GPIO_TogglePin(Enable_GPIO_Port, Enable_Pin);
                 HAL_TIM_Base_Stop(&htim14);
