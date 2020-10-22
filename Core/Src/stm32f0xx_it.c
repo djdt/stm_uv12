@@ -32,9 +32,8 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-#define SHORT_PRESS 5 // ms
-#define LONG_PRESS 500 // ms
-#define MAX_PRESS 1000 // ms
+#define SHORT_PRESS 10 // ms
+#define LONG_PRESS 1000 // ms
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -54,11 +53,13 @@
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-
+uint16_t last_pin_pressed;
+uint8_t button_held = 0;
 /* USER CODE END 0 */
 
 /* External variables --------------------------------------------------------*/
 extern RTC_HandleTypeDef hrtc;
+extern TIM_HandleTypeDef htim14;
 /* USER CODE BEGIN EV */
 extern state_t state;
 extern TIM_HandleTypeDef htim14;
@@ -168,26 +169,66 @@ void EXTI4_15_IRQHandler(void)
     /* USER CODE END EXTI4_15_IRQn 1 */
 }
 
+/**
+  * @brief This function handles TIM14 global interrupt.
+  */
+void TIM14_IRQHandler(void)
+{
+    /* USER CODE BEGIN TIM14_IRQn 0 */
+    if (!button_held) {
+        // Fast timer
+        htim14.Init.Period = 100;
+        HAL_TIM_Base_Init(&htim14);
+        __HAL_TIM_SET_COUNTER(&htim14, 0);
+        __HAL_TIM_CLEAR_IT(&htim14, TIM_IT_UPDATE);
+        HAL_TIM_Base_Start_IT(&htim14);
+        button_held = 1;
+    }
+    /* USER CODE END TIM14_IRQn 0 */
+    HAL_TIM_IRQHandler(&htim14);
+    /* USER CODE BEGIN TIM14_IRQn 1 */
+    switch (last_pin_pressed) {
+    case S1_Pin:
+        if (state.dac > DACMIN) {
+            state.dac -= 1;
+            state.update = 1;
+        }
+        break;
+    case S2_Pin:
+        if (state.dac < DACMAX) {
+            state.dac += 1;
+            state.update = 1;
+        }
+        break;
+    }
+    /* USER CODE END TIM14_IRQn 1 */
+}
+
 /* USER CODE BEGIN 1 */
 void HAL_GPIO_EXTI_Callback(uint16_t pin)
 {
     uint8_t pin_state = HAL_GPIO_ReadPin(S1_GPIO_Port, pin);
     if (pin_state == GPIO_PIN_RESET) {
+        last_pin_pressed = pin;
+        // Reset the timer
+        htim14.Init.Period = 1000;
+        HAL_TIM_Base_Init(&htim14);
         __HAL_TIM_SET_COUNTER(&htim14, 0);
-        HAL_TIM_Base_Start(&htim14);
+        __HAL_TIM_CLEAR_IT(&htim14, TIM_IT_UPDATE);
+        HAL_TIM_Base_Start_IT(&htim14);
     } else {
         uint16_t len = __HAL_TIM_GET_COUNTER(&htim14);
-        if ((len > SHORT_PRESS) && (len < LONG_PRESS)) {
+        if (!button_held && len > SHORT_PRESS) {
             switch (pin) {
             case S1_Pin:
-                if (state.dac > (DACMIN + 10)) {
-                    state.dac -= 10;
+                if (state.dac > DACMIN) {
+                    state.dac -= 1;
                     state.update = 1;
                 }
                 break;
             case S2_Pin:
-                if (state.dac < (DACMAX - 10)) {
-                    state.dac += 10;
+                if (state.dac < DACMAX) {
+                    state.dac += 1;
                     state.update = 1;
                 }
                 break;
@@ -195,11 +236,13 @@ void HAL_GPIO_EXTI_Callback(uint16_t pin)
                 state.update = 2; // Toggle enabled
                 state.enabled ^= 1;
                 HAL_GPIO_TogglePin(Enable_GPIO_Port, Enable_Pin);
-                HAL_TIM_Base_Stop(&htim14);
                 break;
             }
         }
+        // Long presses handled in TIM14_IRQHandler
+        HAL_TIM_Base_Stop_IT(&htim14);
     }
+    button_held = 0;
 }
 /* USER CODE END 1 */
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/
