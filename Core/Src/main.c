@@ -63,7 +63,7 @@ oled0010_t oled = {
     0
 };
 
-state_t state = { STATE_MAIN, 0, 0 };
+state_t state = { STATE_MAIN, 0, DACMAX, 1 };
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -78,16 +78,19 @@ static void MX_RTC_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-void update_from_state(state_t* state)
+void get_dac_string(char* str, uint8_t val)
 {
-    if (state->uv_enabled) {
-        HAL_GPIO_WritePin(Enable_GPIO_Port, Enable_Pin, GPIO_PIN_SET);
-    } else {
-        HAL_GPIO_WritePin(Enable_GPIO_Port, Enable_Pin, GPIO_PIN_RESET);
-    }
-    mcp_set_dac(&mcp, state->dac_value);
+    /* uint8_t i = 0; */
+    str[2] = val % 10 + '0';
+    val /= 10;
+    str[1] = val % 10 + '0';
+    val /= 10;
+    str[0] = val % 10 + '0';
+    val /= 10;
+    /* do { */
+    /*     str[i++] = val % 10 + '0'; */
+    /* } while ((val /= 10) > 0); */
 }
-
 void get_time_string(char* str)
 {
     RTC_TimeTypeDef t;
@@ -110,6 +113,7 @@ int main(void)
 {
     /* USER CODE BEGIN 1 */
     char time_string[] = "00:00";
+    char dac_string[] = "000";
     /* USER CODE END 1 */
 
     /* MCU Configuration--------------------------------------------------------*/
@@ -143,7 +147,7 @@ int main(void)
     // Init the DAC
     HAL_Delay(50);
     mcp_init(&mcp, MCP_VREF_GAP, MCP_PWRD_NORM, MCP_GAIN_1X);
-    mcp_set_dac(&mcp, 255);
+    mcp_set_dac(&mcp, DACMAX);
 
     // Start the display
     oled_init(&oled,
@@ -156,45 +160,49 @@ int main(void)
                       "Cell Destroyer"
                       "\x1d");
     oled_move_cursor(&oled, 0, 1);
-    oled_print(&oled, "          v0.1.0");
+    oled_print(&oled, "          v0.1.1");
     HAL_Delay(3000);
 
     // Reenable the button interrupts
     HAL_NVIC_EnableIRQ(EXTI4_15_IRQn);
-    uint8_t i = 0;
     /* USER CODE END 2 */
 
     /* Infinite loop */
     /* USER CODE BEGIN WHILE */
     while (1) {
         HAL_NVIC_DisableIRQ(RTC_IRQn);
-        GPIO_PinState uv_enabled = HAL_GPIO_ReadPin(Enable_GPIO_Port, Enable_Pin);
+        // Update DAC and enable
+        if (state.update) {
+            HAL_GPIO_WritePin(Enable_GPIO_Port, Enable_Pin,
+                state.enabled ? GPIO_PIN_SET : GPIO_PIN_RESET);
+            mcp_set_dac(&mcp, state.dac);
+            state.update = 0;
+            RTC_TimeTypeDef t;
+            HAL_RTC_SetTime(&hrtc, &t, RTC_FORMAT_BCD);
+        }
         // Update the display
         oled_move_cursor(&oled, 0, 0);
-        if (uv_enabled) {
+        if (state.enabled) {
+            get_time_string(time_string);
+            get_dac_string(dac_string, state.dac);
+
             oled_print(&oled, "UVA On     ");
             // Print time
-            get_time_string(time_string);
             oled_print(&oled, time_string);
             oled_move_cursor(&oled, 0, 1);
-            char s[2] = { '\0' };
-            s[0] = (char)(i + '0');
-            oled_print(&oled, s);
-
-            /* oled_move_cursor(&oled, 0, 1); */
-            /* oled_print(&oled, "          J/m2/s"); */
+            oled_print(&oled, dac_string);
+            oled_print(&oled, "       J/m2/s");
         } else {
             oled_print(&oled, "UVA Off         ");
             oled_move_cursor(&oled, 0, 1);
-            oled_print(&oled, "          J/m2/s");
+            oled_print(&oled, dac_string);
+            oled_print(&oled, "       J/m2/s");
         }
         /* USER CODE END WHILE */
 
         /* USER CODE BEGIN 3 */
-        /* HAL_PWR_EnterSTOPMode(PWR_LOWPOWERREGULATOR_ON, PWR_STOPENTRY_WFE); */
         HAL_NVIC_EnableIRQ(RTC_IRQn);
-        HAL_Delay(100);
-        i += 1;
+        HAL_PWR_EnterSLEEPMode(PWR_LOWPOWERREGULATOR_ON, PWR_STOPENTRY_WFE);
     }
     /* USER CODE END 3 */
 }
