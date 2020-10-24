@@ -223,17 +223,17 @@ void HAL_GPIO_EXTI_Callback(uint16_t pin)
             case S1_Pin:
                 if (state.dac > DAC_MIN) {
                     state.dac -= 1;
-                    state.update = 1;
+                    state.update = 0x01;
                 }
                 break;
             case S2_Pin:
                 if (state.dac < DAC_MAX) {
                     state.dac += 1;
-                    state.update = 1;
+                    state.update = 0x01;
                 }
                 break;
             case S3_Pin:
-                state.update = 2; // Toggle enabled
+                state.update = 0x02; // Toggle enabled
                 state.enabled ^= 1;
                 HAL_GPIO_TogglePin(Enable_GPIO_Port, Enable_Pin);
                 break;

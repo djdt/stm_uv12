@@ -63,7 +63,7 @@ oled0010_t oled = {
     0
 };
 
-state_t state = { STATE_MAIN, 0, DACMAX, 1 };
+state_t state = { STATE_MAIN, 0, DACMAX, 0xff };
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -81,7 +81,6 @@ static void MX_RTC_Init(void);
 void get_energy_density_string(char* str, uint8_t dac)
 {
     // xx.xx J/m²/s
-
     uint32_t efd = ((dac - 16) * UVA_FLUX_INT_STEP_MJ) / 10;
 
     uint8_t i = 0;
@@ -127,7 +126,9 @@ int main(void)
 {
     /* USER CODE BEGIN 1 */
     char time_string[] = "00:00";
-    char dac_string[] = "000";
+    char efd_string[] = "00.00 J/m"
+                        "\x1e"
+                        "/s";
     /* USER CODE END 1 */
 
     /* MCU Configuration--------------------------------------------------------*/
@@ -174,7 +175,7 @@ int main(void)
                       "Cell Destroyer"
                       "\x1d");
     oled_move_cursor(&oled, 0, 1);
-    oled_print(&oled, "          v0.1.1");
+    oled_print(&oled, "          v0.1.2");
     HAL_Delay(3000);
 
     // Reenable the button interrupts
@@ -185,34 +186,31 @@ int main(void)
     /* USER CODE BEGIN WHILE */
     while (1) {
         HAL_NVIC_DisableIRQ(RTC_IRQn);
-
-        // Update the display
-        oled_move_cursor(&oled, 0, 0);
-        if (state.enabled) {
-            get_time_string(time_string);
-            oled_print(&oled, "UVA On     ");
-            // Print time
-            oled_print(&oled, time_string);
-        } else {
-            oled_print(&oled, "UVA Off         ");
-        }
-
-        if (state.update) {
-            mcp_set_dac(&mcp, state.dac);
-
-            oled_move_cursor(&oled, 0, 1);
-            get_dac_string(dac_string, state.dac);
-            oled_print(&oled, dac_string);
-            oled_print(&oled, "       J/m2/s");
-        }
-
-        // Update DAC and enable
-        if (state.update == 2) {
+        // Update Enable
+        if (state.update | 0x01) {
             HAL_GPIO_WritePin(Enable_GPIO_Port, Enable_Pin,
                 state.enabled ? GPIO_PIN_SET : GPIO_PIN_RESET);
             state.update = 0;
             RTC_TimeTypeDef t;
             HAL_RTC_SetTime(&hrtc, &t, RTC_FORMAT_BCD);
+
+            oled_move_cursor(&oled, 0, 0);
+            oled_print(&oled, enabled ? "UVA On " : "UVA Off")
+        }
+        // Update DAC
+        if (state.update | 0x02) {
+            mcp_set_dac(&mcp, state.dac);
+
+            oled_move_cursor(&oled, 4, 1);
+            get_energy_density_string(efd_string, state.dac);
+            oled_print(&oled, efd_string);
+        }
+
+        // Update the time
+        if (state.enabled) {
+            oled_move_cursor(&oled, 11, 0);
+            get_time_string(time_string);
+            oled_print(&oled, time_string);
         }
 
         state.update = 0;
