@@ -78,6 +78,20 @@ static void MX_RTC_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+void get_energy_density_string(char* str, uint8_t dac)
+{
+    // xx.xx J/m²/s
+
+    uint32_t efd = ((dac - 16) * UVA_FLUX_INT_STEP_MJ) / 10;
+
+    uint8_t i = 0;
+    // 4 digits
+    str[4] = efd % 10 + '0';
+    str[3] = (efd /= 10) % 10 + '0';
+
+    str[1] = (efd /= 10) % 10 + '0';
+    str[0] = (efd /= 10) % 10 + '0';
+}
 void get_dac_string(char* str, uint8_t val)
 {
     /* uint8_t i = 0; */

@@ -189,13 +189,13 @@ void TIM14_IRQHandler(void)
     /* USER CODE BEGIN TIM14_IRQn 1 */
     switch (last_pin_pressed) {
     case S1_Pin:
-        if (state.dac > DACMIN) {
+        if (state.dac > DAC_MIN) {
             state.dac -= 1;
             state.update = 1;
         }
         break;
     case S2_Pin:
-        if (state.dac < DACMAX) {
+        if (state.dac < DAC_MAX) {
             state.dac += 1;
             state.update = 1;
         }
@@ -221,13 +221,13 @@ void HAL_GPIO_EXTI_Callback(uint16_t pin)
         if (!button_held && len > SHORT_PRESS) {
             switch (pin) {
             case S1_Pin:
-                if (state.dac > DACMIN) {
+                if (state.dac > DAC_MIN) {
                     state.dac -= 1;
                     state.update = 1;
                 }
                 break;
             case S2_Pin:
-                if (state.dac < DACMAX) {
+                if (state.dac < DAC_MAX) {
                     state.dac += 1;
                     state.update = 1;
                 }
