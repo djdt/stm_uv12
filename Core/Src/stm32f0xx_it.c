@@ -177,7 +177,7 @@ void TIM14_IRQHandler(void)
     /* USER CODE BEGIN TIM14_IRQn 0 */
     if (!button_held) {
         // Fast timer
-        htim14.Init.Period = 100;
+        htim14.Init.Period = 50;
         HAL_TIM_Base_Init(&htim14);
         __HAL_TIM_SET_COUNTER(&htim14, 0);
         __HAL_TIM_CLEAR_IT(&htim14, TIM_IT_UPDATE);
@@ -189,15 +189,15 @@ void TIM14_IRQHandler(void)
     /* USER CODE BEGIN TIM14_IRQn 1 */
     switch (last_pin_pressed) {
     case S1_Pin:
-        if (state.dac > DAC_MIN) {
-            state.dac -= 1;
-            state.update = 1;
+        if (state.dac < DAC_MAX) {
+            state.dac += 1;
+            state.update = 0x02;
         }
         break;
     case S2_Pin:
-        if (state.dac < DAC_MAX) {
-            state.dac += 1;
-            state.update = 1;
+        if (state.dac > DAC_MIN) {
+            state.dac -= 1;
+            state.update = 0x02;
         }
         break;
     }
@@ -221,21 +221,20 @@ void HAL_GPIO_EXTI_Callback(uint16_t pin)
         if (!button_held && len > SHORT_PRESS) {
             switch (pin) {
             case S1_Pin:
-                if (state.dac > DAC_MIN) {
-                    state.dac -= 1;
-                    state.update = 0x01;
+                if (state.dac < DAC_MAX) {
+                    state.dac += 1;
+                    state.update = 0x02;
                 }
                 break;
             case S2_Pin:
-                if (state.dac < DAC_MAX) {
-                    state.dac += 1;
-                    state.update = 0x01;
+                if (state.dac > DAC_MIN) {
+                    state.dac -= 1;
+                    state.update = 0x02;
                 }
                 break;
             case S3_Pin:
-                state.update = 0x02; // Toggle enabled
+                state.update = 0x01; // Toggle enabled
                 state.enabled ^= 1;
-                HAL_GPIO_TogglePin(Enable_GPIO_Port, Enable_Pin);
                 break;
             }
         }

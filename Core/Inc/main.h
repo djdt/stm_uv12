@@ -103,7 +103,7 @@ void Error_Handler(void);
 
 #define DAC_MIN 16 // 30.0 mA
 #define DAC_MAX 252 // 0.0 mA
-#define DAC_STEPS (DAC_MAX - DAC_MIN + 1)
+#define DAC_STEPS (DAC_MAX - DAC_MIN)
 
 #define UVA_FLUX_STEP ((UVA_POWER_MAX / (float)(DAC_STEPS)) * 10.f / UVA_AREA) // J/m2/s
 #define UVA_FLUX_INT_STEP_MJ ((uint16_t)(UVA_FLUX_STEP * 1000.f))
