@@ -188,15 +188,15 @@ void TIM14_IRQHandler(void)
     HAL_TIM_IRQHandler(&htim14);
     /* USER CODE BEGIN TIM14_IRQn 1 */
     switch (last_pin_pressed) {
-    case S1_Pin:
-        if (state.dac < DAC_MAX) {
-            state.dac += 1;
-            state.update = 0x02;
-        }
-        break;
     case S2_Pin:
         if (state.dac > DAC_MIN) {
             state.dac -= 1;
+            state.update = 0x02;
+        }
+        break;
+    case S1_Pin:
+        if (state.dac < DAC_MAX) {
+            state.dac += 1;
             state.update = 0x02;
         }
         break;
@@ -219,23 +219,43 @@ void HAL_GPIO_EXTI_Callback(uint16_t pin)
     } else {
         uint16_t len = __HAL_TIM_GET_COUNTER(&htim14);
         if (!button_held && len > SHORT_PRESS) {
-            switch (pin) {
-            case S1_Pin:
-                if (state.dac < DAC_MAX) {
-                    state.dac += 1;
-                    state.update = 0x02;
+            if (state.display == STATE_SPLASH) {
+                state.display = STATE_MODE;
+                state.update |= 0x80;
+
+            } else if (state.display == STATE_MODE) {
+                switch (pin) {
+                case S2_Pin:
+                    state.display = STATE_MAIN;
+                    state.mode = UVA;
+                    state.update |= 0x83;
+                    break;
+                case S1_Pin:
+                    state.display = STATE_MAIN;
+                    state.mode = UVC;
+                    state.update |= 0x83;
+                    break;
                 }
-                break;
-            case S2_Pin:
-                if (state.dac > DAC_MIN) {
-                    state.dac -= 1;
-                    state.update = 0x02;
+
+            } else if (state.display == STATE_MAIN) {
+                switch (pin) {
+                case S3_Pin:
+                    state.enabled ^= 1;
+                    state.update |= 0x01;
+                    break;
+                case S2_Pin:
+                    if (state.dac > DAC_MIN) {
+                        state.dac -= 1;
+                        state.update |= 0x02;
+                    }
+                    break;
+                case S1_Pin:
+                    if (state.dac < DAC_MAX) {
+                        state.dac += 1;
+                        state.update |= 0x02;
+                    }
+                    break;
                 }
-                break;
-            case S3_Pin:
-                state.update = 0x01; // Toggle enabled
-                state.enabled ^= 1;
-                break;
             }
         }
         // Long presses handled in TIM14_IRQHandler

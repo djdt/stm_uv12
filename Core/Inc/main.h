@@ -39,11 +39,17 @@ extern "C" {
 /* USER CODE BEGIN ET */
 enum DISPLAY_STATE {
     STATE_SPLASH,
+    STATE_MODE,
     STATE_MAIN,
-    STATE_CONFIRM,
+};
+enum UVMODE {
+    UVA,
+    UVB,
+    UVC
 };
 typedef struct {
     enum DISPLAY_STATE display;
+    enum UVMODE mode;
     uint8_t enabled;
     uint8_t dac;
     uint8_t update;
@@ -98,15 +104,16 @@ void Error_Handler(void);
 #define CS_DAC_Pin GPIO_PIN_7
 #define CS_DAC_GPIO_Port GPIOB
 /* USER CODE BEGIN Private defines */
-#define UVA_AREA 3.8f // cm2
+#define AREA 3.8f // cm2
 #define UVA_POWER_MAX 34.5f // mW
+#define UVC_POWER_MAX 3.3f // mW
 
 #define DAC_MIN 16 // 30.0 mA
 #define DAC_MAX 252 // 0.0 mA
 #define DAC_STEPS (DAC_MAX - DAC_MIN)
 
-#define UVA_FLUX_STEP ((UVA_POWER_MAX / (float)(DAC_STEPS)) * 10.f / UVA_AREA) // J/m2/s
-#define UVA_FLUX_INT_STEP_MJ ((uint16_t)(UVA_FLUX_STEP * 1000.f))
+#define UV_FLUX_STEP(power) (power / (float)(DAC_STEPS) * 10.f / AREA) // J/m2/s
+#define UV_FLUX_INT_STEP_MJ(power) ((uint16_t)(UV_FLUX_STEP(power) * 1000.f))
 
 /* USER CODE END Private defines */
 
