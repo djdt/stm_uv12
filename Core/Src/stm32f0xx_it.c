@@ -219,49 +219,90 @@ void HAL_GPIO_EXTI_Callback(uint16_t pin)
     } else {
         uint16_t len = __HAL_TIM_GET_COUNTER(&htim14);
         if (!button_held && len > SHORT_PRESS) {
-            if (state.display == STATE_SPLASH) {
-                state.display = STATE_MODE;
-                state.update |= 0x80;
-
-            } else if (state.display == STATE_MODE) {
-                switch (pin) {
-                case S2_Pin:
-                    state.display = STATE_MAIN;
-                    state.mode = UVA;
-                    state.update |= 0x83;
-                    break;
-                case S1_Pin:
-                    state.display = STATE_MAIN;
-                    state.mode = UVC;
-                    state.update |= 0x83;
-                    break;
-                }
-
-            } else if (state.display == STATE_MAIN) {
+            switch (state.display) {
+            case STATE_SPLASH:
+                state.display = STATE_UV_SELECT;
+                state.update = UPDATE_DISPLAY;
+                break;
+            case STATE_UV_SELECT:
                 switch (pin) {
                 case S3_Pin:
-                    state.enabled ^= 1;
-                    state.update |= 0x01;
+                    state.display = STATE_FLUENCE_SELECT;
+                    state.update = UPDATE_DISPLAY;
                     break;
                 case S2_Pin:
-                    if (state.dac > DAC_MIN) {
-                        state.dac -= 1;
-                        state.update |= 0x02;
-                    }
+                    if (state.mode > 0)
+                        state.mode -= 1;
+                    else
+                        state.mode = UVMODE_C;
                     break;
                 case S1_Pin:
-                    if (state.dac < DAC_MAX) {
-                        state.dac += 1;
-                        state.update |= 0x02;
-                    }
+                    state.mode += 1;
+                    if (state.mode > UVMODE_C)
+                        state.mode = UVMODE_A;
                     break;
                 }
+                break;
+            case STATE_FLUENCE_SELECT:
+                switch (pin) {
+                case S3_Pin:
+                    state.display = STATE_RATE_SELECT;
+                    state.update = UPDATE_DISPLAY;
+                    break;
+                case S2_Pin:
+                    if (state.fluence < 9999)
+                        state.fluence += 10;
+                    break;
+                case S1_Pin:
+                    if (state.fluence > 10)
+                        state.fluence -= 10;
+                    break;
+                }
+                break;
+            case STATE_RATE_SELECT:
+                switch (pin) {
+                case S3_Pin:
+                    state.display = STATE_PAUSED;
+                    state.update = UPDATE_DISPLAY;
+                    break;
+                case S2_Pin:
+                    if (state.dac > DAC_MIN)
+                        state.dac -= 1;
+                    break;
+                case S1_Pin:
+                    if (state.dac < DAC_MAX)
+                        state.dac += 1;
+                    break;
+                }
+                break;
+            case STATE_PAUSED:
+                /* switch (pin) { */
+                /* case S3_Pin: */
+                /*     state.enabled ^= 1; */
+                /*     state.update |= 0x01; */
+                /*     break; */
+                /* case S2_Pin: */
+                /*     if (state.dac > DAC_MIN) { */
+                /*         state.dac -= 1; */
+                /*         state.update |= 0x02; */
+                /*     } */
+                /*     break; */
+                /* case S1_Pin: */
+                /*     if (state.dac < DAC_MAX) { */
+                /*         state.dac += 1; */
+                /*         state.update |= 0x02; */
+                /*     } */
+                /*     break; */
+                /* } */
+                break;
+            default:
+                break;
             }
         }
-        // Long presses handled in TIM14_IRQHandler
         HAL_TIM_Base_Stop_IT(&htim14);
+        // Long presses handled in TIM14_IRQHandler
+        button_held = 0;
     }
-    button_held = 0;
 }
 /* USER CODE END 1 */
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

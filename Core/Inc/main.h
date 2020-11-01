@@ -39,20 +39,38 @@ extern "C" {
 /* USER CODE BEGIN ET */
 enum DISPLAY_STATE {
     STATE_SPLASH,
-    STATE_MODE,
-    STATE_MAIN,
+
+    STATE_UV_SELECT,
+    STATE_FLUENCE_SELECT,
+    STATE_RATE_SELECT,
+
+    STATE_PAUSED,
+    STATE_RUNNING,
+    STATE_FINISHED,
 };
 enum UVMODE {
-    UVA,
-    UVB,
-    UVC
+    UVMODE_A,
+    UVMODE_B,
+    UVMODE_C
+};
+enum UPDATE {
+    UPDATE_NONE = 0,
+    UPDATE_DISPLAY = 1,
+    UPDATE_DAC = 2,
+    UPDATE_ENABLE = 4,
 };
 typedef struct {
     enum DISPLAY_STATE display;
     enum UVMODE mode;
+    enum UPDATE update;
+
     uint8_t enabled;
     uint8_t dac;
-    uint8_t update;
+
+    uint16_t fluence;
+    uint16_t rate;
+    uint32_t delivered;
+
 } state_t;
 /* USER CODE END ET */
 
@@ -112,8 +130,8 @@ void Error_Handler(void);
 #define DAC_MAX 252 // 0.0 mA
 #define DAC_STEPS (DAC_MAX - DAC_MIN)
 
-#define UV_FLUX_STEP(power) (power / (float)(DAC_STEPS) * 10.f / AREA) // J/m2/s
-#define UV_FLUX_INT_STEP_MJ(power) ((uint16_t)(UV_FLUX_STEP(power) * 1000.f))
+#define UVA_RATE_STEP_MJ ((uint32_t)((UVA_POWER_MAX * 10.f * 1000.f) / (AREA * DAC_STEPS)))
+#define UVC_RATE_STEP_MJ ((uint32_t)((UVC_POWER_MAX * 10.f * 1000.f) / (AREA * DAC_STEPS)))
 
 /* USER CODE END Private defines */
 
