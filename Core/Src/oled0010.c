@@ -164,6 +164,11 @@ void oled_shift_display(oled0010_t* oled, int8_t dir)
     }
 }
 
+void oled_print_char(oled0010_t* oled, char c)
+{
+    oled_send(oled, c, GPIO_PIN_SET);
+}
+
 void oled_print(oled0010_t* oled, char* str)
 {
     char* c = str;

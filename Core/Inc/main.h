@@ -44,6 +44,7 @@ enum DISPLAY_STATE {
     STATE_FLUENCE_SELECT,
     STATE_RATE_SELECT,
 
+    STATE_INIT,
     STATE_PAUSED,
     STATE_RUNNING,
     STATE_FINISHED,
@@ -69,8 +70,10 @@ typedef struct {
 
     uint16_t fluence;
     uint16_t rate;
+    uint32_t total;
     uint32_t delivered;
 
+    uint16_t seconds_remaining;
 } state_t;
 /* USER CODE END ET */
 

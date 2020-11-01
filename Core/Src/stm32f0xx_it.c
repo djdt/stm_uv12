@@ -152,6 +152,17 @@ void RTC_IRQHandler(void)
     /* USER CODE END RTC_IRQn 0 */
     HAL_RTC_AlarmIRQHandler(&hrtc);
     /* USER CODE BEGIN RTC_IRQn 1 */
+    switch (state.display) {
+    case STATE_RUNNING:
+        if (state.delivered < state.total) {
+            state.delivered += state.rate;
+        } else {
+            state.display = STATE_FINISHED;
+        }
+        break;
+    default:
+        break;
+    }
     /* USER CODE END RTC_IRQn 1 */
 }
 
@@ -187,18 +198,32 @@ void TIM14_IRQHandler(void)
     /* USER CODE END TIM14_IRQn 0 */
     HAL_TIM_IRQHandler(&htim14);
     /* USER CODE BEGIN TIM14_IRQn 1 */
-    switch (last_pin_pressed) {
-    case S2_Pin:
-        if (state.dac > DAC_MIN) {
-            state.dac -= 1;
-            state.update = 0x02;
+    switch (state.display) {
+    case STATE_FLUENCE_SELECT:
+        switch (last_pin_pressed) {
+        case S2_Pin:
+            if (state.fluence < 9999)
+                state.fluence += 10;
+            break;
+        case S1_Pin:
+            if (state.fluence > 10)
+                state.fluence -= 10;
+            break;
         }
         break;
-    case S1_Pin:
-        if (state.dac < DAC_MAX) {
-            state.dac += 1;
-            state.update = 0x02;
+    case STATE_RATE_SELECT:
+        switch (last_pin_pressed) {
+        case S2_Pin:
+            if (state.dac > DAC_MIN)
+                state.dac -= 1;
+            break;
+        case S1_Pin:
+            if (state.dac < DAC_MAX)
+                state.dac += 1;
+            break;
         }
+        break;
+    default:
         break;
     }
     /* USER CODE END TIM14_IRQn 1 */
@@ -262,8 +287,8 @@ void HAL_GPIO_EXTI_Callback(uint16_t pin)
             case STATE_RATE_SELECT:
                 switch (pin) {
                 case S3_Pin:
-                    state.display = STATE_PAUSED;
-                    state.update = UPDATE_DISPLAY;
+                    state.display = STATE_INIT;
+                    state.update = UPDATE_DISPLAY | UPDATE_DAC;
                     break;
                 case S2_Pin:
                     if (state.dac > DAC_MIN)
@@ -276,11 +301,12 @@ void HAL_GPIO_EXTI_Callback(uint16_t pin)
                 }
                 break;
             case STATE_PAUSED:
-                /* switch (pin) { */
-                /* case S3_Pin: */
-                /*     state.enabled ^= 1; */
-                /*     state.update |= 0x01; */
-                /*     break; */
+                switch (pin) {
+                case S3_Pin:
+                    state.display = STATE_RUNNING;
+                    state.enabled = 1;
+                    state.update |= UPDATE_ENABLE;
+                    break;
                 /* case S2_Pin: */
                 /*     if (state.dac > DAC_MIN) { */
                 /*         state.dac -= 1; */
@@ -293,15 +319,15 @@ void HAL_GPIO_EXTI_Callback(uint16_t pin)
                 /*         state.update |= 0x02; */
                 /*     } */
                 /*     break; */
-                /* } */
+                }
                 break;
             default:
                 break;
             }
+            // Long presses handled in TIM14_IRQHandler
         }
-        HAL_TIM_Base_Stop_IT(&htim14);
-        // Long presses handled in TIM14_IRQHandler
         button_held = 0;
+        HAL_TIM_Base_Stop_IT(&htim14);
     }
 }
 /* USER CODE END 1 */

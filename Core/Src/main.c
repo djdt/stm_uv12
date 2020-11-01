@@ -66,6 +66,8 @@ oled0010_t oled = {
 state_t state = { STATE_SPLASH, UVMODE_A, UPDATE_NONE,
     0, DAC_MAX,
     100, 0, 0 };
+
+char time_string[] = "00:00";
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -80,23 +82,23 @@ static void MX_RTC_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-void get_energy_density_string(char* str, uint8_t dac, enum UVMODE mode)
-{
-    // xx.xx J/m²/s
-    uint32_t efd = 0;
-    if (mode == UVMODE_A) {
-        efd = ((DAC_STEPS - (dac - 16)) * UV_FLUX_INT_STEP_MJ(UVA_POWER_MAX)) / 10;
-    } else if (mode == UVMODE_C) {
-        efd = ((DAC_STEPS - (dac - 16)) * UV_FLUX_INT_STEP_MJ(UVC_POWER_MAX)) / 10;
-    }
+/* void get_energy_density_string(char* str, uint8_t dac, enum UVMODE mode) */
+/* { */
+/*     // xx.xx J/m²/s */
+/*     uint32_t efd = 0; */
+/*     if (mode == UVMODE_A) { */
+/*         efd = ((DAC_STEPS - (dac - 16)) * UV_FLUX_INT_STEP_MJ(UVA_POWER_MAX)) / 10; */
+/*     } else if (mode == UVMODE_C) { */
+/*         efd = ((DAC_STEPS - (dac - 16)) * UV_FLUX_INT_STEP_MJ(UVC_POWER_MAX)) / 10; */
+/*     } */
 
-    // 4 digits
-    str[4] = efd % 10 + '0';
-    str[3] = (efd /= 10) % 10 + '0';
+/*     // 4 digits */
+/*     str[4] = efd % 10 + '0'; */
+/*     str[3] = (efd /= 10) % 10 + '0'; */
 
-    str[1] = (efd /= 10) % 10 + '0';
-    str[0] = (efd /= 10) % 10 + '0';
-}
+/*     str[1] = (efd /= 10) % 10 + '0'; */
+/*     str[0] = (efd /= 10) % 10 + '0'; */
+/* } */
 
 /* void get_time_string(char* str) */
 /* { */
@@ -118,6 +120,18 @@ void get_time_string(char* str, RTC_TimeTypeDef* t)
     str[2] = ':';
     str[3] = (t->Seconds >> 4) + '0';
     str[4] = (t->Seconds & 0x0f) + '0';
+}
+
+void get_seconds_string(char* str, uint16_t seconds)
+{
+    uint8_t m = seconds / 60;
+    uint8_t s = seconds % 60;
+
+    str[0] = m % 10 + '0';
+    str[1] = m / 10 + '0';
+    str[2] = ':';
+    str[3] = s % 10 + '0';
+    str[4] = s / 10 + '0';
 }
 
 void get_5digit_string(char* str, uint32_t n)
@@ -183,11 +197,45 @@ void print_rate_select(oled0010_t* oled, uint32_t rate_mj)
                      "\xc5");
     char str[] = "      mJ/m"
                  "\x1e"
-                 "/s   ";
+                 "/s  "
+                 "\xc6";
     get_5digit_string(str, rate_mj);
     oled_move_cursor(oled, 0, 1);
     oled_print(oled, str);
 }
+
+void print_main(oled0010_t* oled, char sym, enum UVMODE mode, uint32_t seconds, uint32_t delivered)
+{
+    oled_move_cursor(oled, 0, 0);
+    oled_print(oled, mode == UVMODE_A ? "UVA" : (mode == UVMODE_B ? "UVB" : "UVC"));
+    oled_move_cursor(oled, 4, 0);
+    oled_print_char(oled, sym);
+    get_seconds_string(time_string, seconds);
+    oled_move_cursor(oled, 10, 0);
+    oled_print(oled, time_string);
+
+    oled_move_cursor(oled, 0, 1);
+    oled_print(oled, "Total ");
+    char str[] = "      J/m"
+                 "\x1e";
+    get_5digit_string(str, delivered / 1000);
+    oled_print(oled, str);
+}
+
+/* void print_paused(oled0010_t* oled, enum UVMODE mode, uint32_t seconds, uint32_t delivered) */
+/* { */
+/*     oled_move_cursor(oled, 0, 0); */
+/*     oled_print(oled, mode == UVMODE_A ? "UVA" : (mode == UVMODE_B ? "UVB" : "UVC")); */
+/*     oled_print(oled, " =      "); */
+/*     get_seconds_string(time_string, seconds); */
+/*     oled_print(oled, time_string); */
+/*     oled_move_cursor(oled, 0, 1); */
+/*     oled_print(oled, "Total "); */
+/*     char str[] = "      J/m" */
+/*                  "\x1e"; */
+/*     get_5digit_string(str, delivered / 1000); */
+/*     oled_print(oled, str); */
+/* } */
 /* USER CODE END 0 */
 
 /**
@@ -197,11 +245,12 @@ void print_rate_select(oled0010_t* oled, uint32_t rate_mj)
 int main(void)
 {
     /* USER CODE BEGIN 1 */
-    char time_string[] = "00:00";
-    char efd_string[] = "00.00 J/m"
-                        "\x1e"
-                        "/s";
-    RTC_TimeTypeDef time_zero;
+    /* char time_string[] = "00:00"; */
+    /* char efd_string[] = "00.00 J/m" */
+    /*                     "\x1e" */
+    /*                     "/s"; */
+    uint32_t step;
+    uint32_t rate;
     /* USER CODE END 1 */
 
     /* MCU Configuration--------------------------------------------------------*/
@@ -258,47 +307,78 @@ int main(void)
             oled_clear_display(&oled);
             state.update &= ~UPDATE_DISPLAY;
         }
-        if (state.display == STATE_UV_SELECT) {
+        if (state.update & UPDATE_DAC) {
+            mcp_set_dac(&mcp, state.dac);
+            state.update &= ~UPDATE_DAC;
+        }
+        if (state.update & UPDATE_ENABLE) {
+            HAL_GPIO_WritePin(Enable_GPIO_Port, Enable_Pin,
+                state.enabled ? GPIO_PIN_SET : GPIO_PIN_RESET);
+            state.update &= ~UPDATE_ENABLE;
+        }
+
+        switch (state.display) {
+        case STATE_UV_SELECT:
             print_uv_select(&oled, state.mode);
-        } else if (state.display == STATE_FLUENCE_SELECT) {
+            break;
+        case STATE_FLUENCE_SELECT:
             print_fluence_select(&oled, state.fluence);
-        } else if (state.display == STATE_RATE_SELECT) {
-            uint16_t step = state.mode == UVMODE_A ? UVA_RATE_STEP_MJ : UVC_RATE_STEP_MJ;
-            uint32_t rate = (DAC_STEPS - (state.dac - DAC_MIN)) * step;
+            break;
+        case STATE_RATE_SELECT:
+            step = state.mode == UVMODE_A ? UVA_RATE_STEP_MJ : UVC_RATE_STEP_MJ;
+            rate = (DAC_STEPS - (state.dac - DAC_MIN)) * step;
             print_rate_select(&oled, rate);
-        } else if (state.display == STATE_RUNNING) {
+            break;
+        case STATE_INIT:
+            /* state.seconds_remaining = ((uint32_t)(state.fluence) * 1000 / state.rate); */
+            state.total = state.fluence * 1000;
+            state.delivered = 0;
+            state.display = STATE_PAUSED;
+            // Fall through
+        case STATE_PAUSED:
+            print_main(&oled, '=', state.mode, state.seconds_remaining, state.delivered);
+            break;
+
+            /* oled_move_cursor(&oled, 0, 0); */
+            /* oled_print(&oled, state.mode == UVMODE_A ? "UVA" : "UVC"); */
+
+        case STATE_RUNNING:
+            print_main(&oled, '\xf6', state.mode, state.seconds_remaining, state.delivered);
             // Update Enable
-            if (state.update & UPDATE_ENABLE) {
-                HAL_GPIO_WritePin(Enable_GPIO_Port, Enable_Pin,
-                    state.enabled ? GPIO_PIN_SET : GPIO_PIN_RESET);
-                HAL_RTC_SetTime(&hrtc, &time_zero, RTC_FORMAT_BCD);
+            /* if (state.update & UPDATE_ENABLE) { */
+            /*     HAL_GPIO_WritePin(Enable_GPIO_Port, Enable_Pin, */
+            /*         state.enabled ? GPIO_PIN_SET : GPIO_PIN_RESET); */
+            /*     HAL_RTC_SetTime(&hrtc, &tzero, RTC_FORMAT_BCD); */
 
-                oled_move_cursor(&oled, 0, 0);
-                oled_print(&oled, state.mode == UVMODE_A ? "UVA" : "UVC");
-                oled_print(&oled, (state.enabled ? " On " : " Off"));
-                state.update &= ~UPDATE_ENABLE;
-            }
-            // Update DAC
-            if (state.update & UPDATE_DAC) {
-                mcp_set_dac(&mcp, state.dac);
+            /*     oled_move_cursor(&oled, 0, 0); */
+            /*     oled_print(&oled, state.mode == UVMODE_A ? "UVA" : "UVC"); */
+            /*     oled_print(&oled, (state.enabled ? " On " : " Off")); */
+            /*     state.update &= ~UPDATE_ENABLE; */
+            /* } */
+            /* // Update DAC */
+            /* if (state.update & UPDATE_DAC) { */
+            /*     mcp_set_dac(&mcp, state.dac); */
 
-                oled_move_cursor(&oled, 4, 1);
-                /* get_energy_density_string(efd_string, state.dac, state.mode); */
-                oled_print(&oled, efd_string);
-                state.update &= ~UPDATE_DAC;
-            }
+            /*     oled_move_cursor(&oled, 4, 1); */
+            /*     /1* get_energy_density_string(efd_string, state.dac, state.mode); *1/ */
+            /*     oled_print(&oled, efd_string); */
+            /*     state.update &= ~UPDATE_DAC; */
+            /* } */
 
-            // Update the time
-            if (state.enabled) {
-                RTC_TimeTypeDef t;
-                RTC_DateTypeDef d;
-                HAL_RTC_GetTime(&hrtc, &t, RTC_FORMAT_BCD);
-                HAL_RTC_GetDate(&hrtc, &d, RTC_FORMAT_BCD);
+            /* // Update the time */
+            /* if (state.enabled) { */
+            /*     RTC_TimeTypeDef t; */
+            /*     RTC_DateTypeDef d; */
+            /*     HAL_RTC_GetTime(&hrtc, &t, RTC_FORMAT_BCD); */
+            /*     HAL_RTC_GetDate(&hrtc, &d, RTC_FORMAT_BCD); */
 
-                oled_move_cursor(&oled, 11, 0);
-                get_time_string(time_string, &t);
-                oled_print(&oled, time_string);
-            }
+            /*     oled_move_cursor(&oled, 11, 0); */
+            /*     get_time_string(time_string, &t); */
+            /*     oled_print(&oled, time_string); */
+            /* } */
+            break;
+        default:
+            break;
         }
 
         /* USER CODE END WHILE */
