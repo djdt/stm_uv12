@@ -175,15 +175,15 @@ void TIM14_IRQHandler(void)
   HAL_TIM_IRQHandler(&htim14);
   /* USER CODE BEGIN TIM14_IRQn 1 */
     switch (state.display) {
-    case STATE_FLUENCE_SELECT:
+    case STATE_DOSE_SELECT:
         switch (last_pin_pressed) {
         case S2_Pin:
-            if (state.fluence < 9999)
-                state.fluence += 10;
+            if (state.dose < 1000000)
+                state.dose += 1000;
             break;
         case S1_Pin:
-            if (state.fluence > 10)
-                state.fluence -= 10;
+            if (state.dose > 0)
+                state.dose -= 1000;
             break;
         }
         break;
@@ -229,7 +229,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t pin)
             case STATE_UV_SELECT:
                 switch (pin) {
                 case S3_Pin:
-                    state.display = STATE_FLUENCE_SELECT;
+                    state.display = STATE_DOSE_SELECT;
                     state.update = UPDATE_DISPLAY;
                     break;
                 case S2_Pin:
@@ -245,19 +245,19 @@ void HAL_GPIO_EXTI_Callback(uint16_t pin)
                     break;
                 }
                 break;
-            case STATE_FLUENCE_SELECT:
+            case STATE_DOSE_SELECT:
                 switch (pin) {
                 case S3_Pin:
                     state.display = STATE_RATE_SELECT;
                     state.update = UPDATE_DISPLAY;
                     break;
                 case S2_Pin:
-                    if (state.fluence < 9999)
-                        state.fluence += 10;
+                    if (state.dose < 1000000)
+                        state.dose += 1000;
                     break;
                 case S1_Pin:
-                    if (state.fluence > 10)
-                        state.fluence -= 10;
+                    if (state.dose > 0)
+                        state.dose -= 1000;
                     break;
                 }
                 break;
@@ -284,18 +284,18 @@ void HAL_GPIO_EXTI_Callback(uint16_t pin)
                     state.enabled = 1;
                     state.update |= UPDATE_ENABLE;
                     break;
-                /* case S2_Pin: */
-                /*     if (state.dac > DAC_MIN) { */
-                /*         state.dac -= 1; */
-                /*         state.update |= 0x02; */
-                /*     } */
-                /*     break; */
-                /* case S1_Pin: */
-                /*     if (state.dac < DAC_MAX) { */
-                /*         state.dac += 1; */
-                /*         state.update |= 0x02; */
-                /*     } */
-                /*     break; */
+                    /* case S2_Pin: */
+                    /*     if (state.dac > DAC_MIN) { */
+                    /*         state.dac -= 1; */
+                    /*         state.update |= 0x02; */
+                    /*     } */
+                    /*     break; */
+                    /* case S1_Pin: */
+                    /*     if (state.dac < DAC_MAX) { */
+                    /*         state.dac += 1; */
+                    /*         state.update |= 0x02; */
+                    /*     } */
+                    /*     break; */
                 }
                 break;
             default:

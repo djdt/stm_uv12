@@ -65,9 +65,15 @@ oled0010_t oled = {
 
 state_t state = { STATE_SPLASH, UVMODE_A, UPDATE_NONE,
     0, DAC_MAX,
-    100, 0, 0 };
+    0, 1000, 0 };
 
-char time_string[] = "00:00";
+/* char time_string[] = "00:00"; */
+char strbuf[16];
+const char dose_units[] = " J/m"
+                          "\x1e";
+const char rate_units[] = " J/m"
+                          "\x1e"
+                          "/s";
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -127,19 +133,65 @@ void get_seconds_string(char* str, uint16_t seconds)
     uint8_t m = seconds / 60;
     uint8_t s = seconds % 60;
 
-    str[0] = m % 10 + '0';
-    str[1] = m / 10 + '0';
+    str[0] = m / 10 + '0';
+    str[1] = m % 10 + '0';
     str[2] = ':';
-    str[3] = s % 10 + '0';
-    str[4] = s / 10 + '0';
+    str[3] = s / 10 + '0';
+    str[4] = s % 10 + '0';
 }
 
-void get_5digit_string(char* str, uint32_t n)
+uint8_t get_int_string(char* str, uint32_t n)
 {
-    int8_t i = 4;
+    uint8_t i = 0;
+
+    // Get string last digit first
     do {
-        str[i] = n % 10 + '0';
-    } while (((n /= 10) > 0) && (i-- > 0));
+        str[i++] = n % 10 + '0';
+    } while (((n /= 10) > 0));
+
+    uint8_t l = i;
+    i -= 1;
+
+    // Reverse the string
+    char t;
+    for (uint8_t j = 0; j < i; ++j, --i) {
+        t = str[j];
+        str[j] = str[i];
+        str[i] = t;
+    }
+    str[l] = '\0';
+
+    return l;
+}
+
+uint8_t get_decimal_string(char* str, uint32_t n, uint8_t decimals)
+{
+    uint16_t d = 1;
+    for (uint8_t i = 0; i < decimals; ++i) {
+        d *= 10;
+    }
+
+    uint8_t l = get_int_string(str, n / d);
+    str[l++] = '.';
+
+    uint8_t l2 = get_int_string(str + l, n % d);
+    for (uint8_t i = 0; i < decimals - l2; ++i) {
+        for (uint8_t j = l + decimals; j > l; --j) {
+            str[j] = str[j - 1];
+        }
+        str[l + i] = '0';
+    }
+    // Terminate overlong strings
+    str[l + decimals] = '\0';
+
+    return l + decimals;
+}
+
+void oled_pad(oled0010_t* oled, uint8_t n)
+{
+    for (; n > 0; n--) {
+        oled_print_char(oled, ' ');
+    }
 }
 
 void print_splash(oled0010_t* oled)
@@ -148,60 +200,73 @@ void print_splash(oled0010_t* oled)
     oled_print(oled, "\x1d"
                      "Cell Destroyer"
                      "\x1d");
-    oled_move_cursor(oled, 0, 1);
-    oled_print(oled, "          v0.1.2");
+    oled_move_cursor(oled, 10, 1);
+    oled_print(oled, "v0.2.0");
 }
 
 void print_uv_select(oled0010_t* oled, enum UVMODE mode)
 {
     oled_move_cursor(oled, 0, 0);
-    oled_print(oled, "Select Module  "
-                     "\xc5");
+    oled_print(oled, "Select Module");
+    oled_move_cursor(oled, 15, 0);
+    oled_print_char(oled, '\xc5');
+
     oled_move_cursor(oled, 0, 1);
     oled_print(oled, mode == UVMODE_A ? "UVA" : (mode == UVMODE_B ? "UVB" : "UVC"));
-    oled_print(oled, " Module     "
-                     "\xc6");
+    oled_print(oled, " Module");
+    oled_move_cursor(oled, 15, 1);
+    oled_print_char(oled, '\xc6');
 }
 
-void print_time_select(oled0010_t* oled, RTC_TimeTypeDef* t)
+/* void print_time_select(oled0010_t* oled, RTC_TimeTypeDef* t) */
+/* { */
+/*     get_time_string(time_string, t); */
+
+/*     oled_move_cursor(oled, 0, 0); */
+/*     oled_print(oled, "Treatment Time"); */
+/*     oled_move_cursor(oled, 15, 0); */
+/*     oled_print_char(oled, '\xc5'); */
+
+/*     oled_move_cursor(oled, 0, 1); */
+/*     oled_print(oled, time_string); */
+/*     oled_move_cursor(oled, 15, 1); */
+/*     oled_print_char(oled, '\xc6'); */
+/* } */
+
+void print_dose_select(oled0010_t* oled, uint32_t dose)
 {
-    char str[] = "00:00";
+    uint8_t len = get_int_string(strbuf, dose / 1000);
+
     oled_move_cursor(oled, 0, 0);
-    oled_print(oled, "Treatment Time  "
-                     "\xc5");
+    oled_print(oled, "Total Dose");
+    oled_move_cursor(oled, 15, 0);
+    oled_print_char(oled, '\xc5');
+
     oled_move_cursor(oled, 0, 1);
-    get_time_string(str, t);
-    oled_print(oled, str);
-    oled_print(oled, "          "
-                     "\xc6");
+    oled_pad(oled, 14 - 5 - len);
+    oled_print(oled, strbuf);
+    oled_print(oled, (char*)dose_units);
+
+    oled_move_cursor(oled, 15, 1);
+    oled_print_char(oled, '\xc6');
 }
 
-void print_fluence_select(oled0010_t* oled, uint16_t fluence)
+void print_rate_select(oled0010_t* oled, uint32_t rate)
 {
-    oled_move_cursor(oled, 0, 0);
-    oled_print(oled, "Total Dose     "
-                     "\xc5");
-    char str[] = "      J/m"
-                 "\x1e";
-    get_5digit_string(str, fluence);
-    oled_move_cursor(oled, 0, 1);
-    oled_print(oled, str);
-    oled_print(oled, "     "
-                     "\xc6");
-}
+    uint32_t len = get_decimal_string(strbuf, rate, 3);
 
-void print_rate_select(oled0010_t* oled, uint32_t rate_mj)
-{
     oled_move_cursor(oled, 0, 0);
-    oled_print(oled, "Dose Rate      "
-                     "\xc5");
-    char str[] = "      mJ/m"
-                 "\x1e"
-                 "/s  "
-                 "\xc6";
-    get_5digit_string(str, rate_mj);
+    oled_print(oled, "Dose Rate");
+    oled_move_cursor(oled, 15, 0);
+    oled_print_char(oled, '\xc5');
+
     oled_move_cursor(oled, 0, 1);
-    oled_print(oled, str);
+    oled_pad(oled, 14 - 7 - len);
+    oled_print(oled, strbuf);
+    oled_print(oled, (char*)rate_units);
+
+    oled_move_cursor(oled, 15, 1);
+    oled_print_char(oled, '\xc6');
 }
 
 void print_main(oled0010_t* oled, char sym, enum UVMODE mode, uint32_t seconds, uint32_t delivered)
@@ -210,15 +275,15 @@ void print_main(oled0010_t* oled, char sym, enum UVMODE mode, uint32_t seconds, 
     oled_print(oled, mode == UVMODE_A ? "UVA" : (mode == UVMODE_B ? "UVB" : "UVC"));
     oled_move_cursor(oled, 4, 0);
     oled_print_char(oled, sym);
-    get_seconds_string(time_string, seconds);
+    get_seconds_string(strbuf, seconds);
     oled_move_cursor(oled, 10, 0);
-    oled_print(oled, time_string);
+    oled_print(oled, strbuf);
 
     oled_move_cursor(oled, 0, 1);
     oled_print(oled, "Total ");
     char str[] = "      J/m"
                  "\x1e";
-    get_5digit_string(str, delivered / 1000);
+    /* get_5digit_string(str, delivered / 1000); */
     oled_print(oled, str);
 }
 
@@ -244,36 +309,36 @@ void print_main(oled0010_t* oled, char sym, enum UVMODE mode, uint32_t seconds, 
   */
 int main(void)
 {
-    /* USER CODE BEGIN 1 */
+  /* USER CODE BEGIN 1 */
     /* char time_string[] = "00:00"; */
     /* char efd_string[] = "00.00 J/m" */
     /*                     "\x1e" */
     /*                     "/s"; */
     uint32_t step;
     uint32_t rate;
-    /* USER CODE END 1 */
+  /* USER CODE END 1 */
 
-    /* MCU Configuration--------------------------------------------------------*/
+  /* MCU Configuration--------------------------------------------------------*/
 
-    /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
-    HAL_Init();
+  /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
+  HAL_Init();
 
-    /* USER CODE BEGIN Init */
-    /* USER CODE END Init */
+  /* USER CODE BEGIN Init */
+  /* USER CODE END Init */
 
-    /* Configure the system clock */
-    SystemClock_Config();
+  /* Configure the system clock */
+  SystemClock_Config();
 
-    /* USER CODE BEGIN SysInit */
+  /* USER CODE BEGIN SysInit */
 
-    /* USER CODE END SysInit */
+  /* USER CODE END SysInit */
 
-    /* Initialize all configured peripherals */
-    MX_GPIO_Init();
-    MX_SPI1_Init();
-    MX_TIM14_Init();
-    MX_RTC_Init();
-    /* USER CODE BEGIN 2 */
+  /* Initialize all configured peripherals */
+  MX_GPIO_Init();
+  MX_SPI1_Init();
+  MX_TIM14_Init();
+  MX_RTC_Init();
+  /* USER CODE BEGIN 2 */
     // Disable interrupts
     HAL_NVIC_DisableIRQ(RTC_IRQn);
     HAL_NVIC_DisableIRQ(EXTI4_15_IRQn);
@@ -297,12 +362,23 @@ int main(void)
 
     // Reenable the button interrupts
     HAL_NVIC_EnableIRQ(EXTI4_15_IRQn);
-    /* USER CODE END 2 */
+  /* USER CODE END 2 */
 
-    /* Infinite loop */
-    /* USER CODE BEGIN WHILE */
+  /* Infinite loop */
+  /* USER CODE BEGIN WHILE */
     while (1) {
-        HAL_NVIC_DisableIRQ(RTC_IRQn);
+        /* i += 9; */
+        /* uint8_t l = get_int_string(strbuf, i); */
+        /* oled_clear_display(&oled); */
+        /* oled_move_cursor(&oled, 0, 0); */
+        /* oled_print(&oled, strbuf); */
+        /* l = get_decimal_string(strbuf, i, 3); */
+        /* oled_move_cursor(&oled, 0, 1); */
+        /* oled_print(&oled, strbuf); */
+        /* HAL_Delay(300); */
+        /* continue; */
+
+        /* HAL_NVIC_DisableIRQ(RTC_IRQn); */
         if (state.update & UPDATE_DISPLAY) {
             oled_clear_display(&oled);
             state.update &= ~UPDATE_DISPLAY;
@@ -321,19 +397,19 @@ int main(void)
         case STATE_UV_SELECT:
             print_uv_select(&oled, state.mode);
             break;
-        case STATE_FLUENCE_SELECT:
-            print_fluence_select(&oled, state.fluence);
+        case STATE_DOSE_SELECT:
+            print_dose_select(&oled, state.dose);
             break;
         case STATE_RATE_SELECT:
-            step = state.mode == UVMODE_A ? UVA_RATE_STEP_MJ : UVC_RATE_STEP_MJ;
+            step = state.mode == UVMODE_A ? UVA_RATE_STEP : UVC_RATE_STEP;
             rate = (DAC_STEPS - (state.dac - DAC_MIN)) * step;
             print_rate_select(&oled, rate);
             break;
         case STATE_INIT:
             /* state.seconds_remaining = ((uint32_t)(state.fluence) * 1000 / state.rate); */
-            state.total = state.fluence * 1000;
             state.delivered = 0;
             state.display = STATE_PAUSED;
+            state.seconds_remaining = state.dose / state.rate;
             // Fall through
         case STATE_PAUSED:
             print_main(&oled, '=', state.mode, state.seconds_remaining, state.delivered);
@@ -343,12 +419,11 @@ int main(void)
             /* oled_print(&oled, state.mode == UVMODE_A ? "UVA" : "UVC"); */
 
         case STATE_RUNNING:
-            if (state.delivered < state.total) {
+            if (state.delivered < state.dose) {
                 state.delivered += state.rate;
             } else {
                 state.display = STATE_FINISHED;
             }
-            state.seconds_remaining += 1;
             print_main(&oled, '\xf6', state.mode, state.seconds_remaining, state.delivered);
             // Update Enable
             /* if (state.update & UPDATE_ENABLE) { */
@@ -387,15 +462,15 @@ int main(void)
             break;
         }
 
-        /* USER CODE END WHILE */
+    /* USER CODE END WHILE */
 
-        /* USER CODE BEGIN 3 */
-        HAL_NVIC_EnableIRQ(RTC_IRQn);
+    /* USER CODE BEGIN 3 */
+        /* HAL_NVIC_EnableIRQ(RTC_IRQn); */
         HAL_SuspendTick();
         HAL_PWR_EnterSLEEPMode(PWR_LOWPOWERREGULATOR_ON, PWR_SLEEPENTRY_WFE);
         HAL_ResumeTick();
     }
-    /* USER CODE END 3 */
+  /* USER CODE END 3 */
 }
 
 /**
@@ -404,37 +479,40 @@ int main(void)
   */
 void SystemClock_Config(void)
 {
-    RCC_OscInitTypeDef RCC_OscInitStruct = { 0 };
-    RCC_ClkInitTypeDef RCC_ClkInitStruct = { 0 };
-    RCC_PeriphCLKInitTypeDef PeriphClkInit = { 0 };
+  RCC_OscInitTypeDef RCC_OscInitStruct = {0};
+  RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
+  RCC_PeriphCLKInitTypeDef PeriphClkInit = {0};
 
-    /** Initializes the RCC Oscillators according to the specified parameters
+  /** Initializes the RCC Oscillators according to the specified parameters
   * in the RCC_OscInitTypeDef structure.
   */
-    RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI | RCC_OSCILLATORTYPE_LSI;
-    RCC_OscInitStruct.HSIState = RCC_HSI_ON;
-    RCC_OscInitStruct.HSICalibrationValue = RCC_HSICALIBRATION_DEFAULT;
-    RCC_OscInitStruct.LSIState = RCC_LSI_ON;
-    RCC_OscInitStruct.PLL.PLLState = RCC_PLL_NONE;
-    if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK) {
-        Error_Handler();
-    }
-    /** Initializes the CPU, AHB and APB buses clocks
+  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI|RCC_OSCILLATORTYPE_LSI;
+  RCC_OscInitStruct.HSIState = RCC_HSI_ON;
+  RCC_OscInitStruct.HSICalibrationValue = RCC_HSICALIBRATION_DEFAULT;
+  RCC_OscInitStruct.LSIState = RCC_LSI_ON;
+  RCC_OscInitStruct.PLL.PLLState = RCC_PLL_NONE;
+  if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /** Initializes the CPU, AHB and APB buses clocks
   */
-    RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK | RCC_CLOCKTYPE_SYSCLK
-        | RCC_CLOCKTYPE_PCLK1;
-    RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_HSI;
-    RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
-    RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV1;
+  RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
+                              |RCC_CLOCKTYPE_PCLK1;
+  RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_HSI;
+  RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
+  RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV1;
 
-    if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_0) != HAL_OK) {
-        Error_Handler();
-    }
-    PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_RTC;
-    PeriphClkInit.RTCClockSelection = RCC_RTCCLKSOURCE_LSI;
-    if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInit) != HAL_OK) {
-        Error_Handler();
-    }
+  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_0) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_RTC;
+  PeriphClkInit.RTCClockSelection = RCC_RTCCLKSOURCE_LSI;
+  if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInit) != HAL_OK)
+  {
+    Error_Handler();
+  }
 }
 
 /**
@@ -445,27 +523,57 @@ void SystemClock_Config(void)
 static void MX_RTC_Init(void)
 {
 
-    /* USER CODE BEGIN RTC_Init 0 */
+  /* USER CODE BEGIN RTC_Init 0 */
 
-    /* USER CODE END RTC_Init 0 */
+  /* USER CODE END RTC_Init 0 */
 
-    /* USER CODE BEGIN RTC_Init 1 */
+  RTC_TimeTypeDef sTime = {0};
+  RTC_DateTypeDef sDate = {0};
 
-    /* USER CODE END RTC_Init 1 */
-    /** Initialize RTC Only
+  /* USER CODE BEGIN RTC_Init 1 */
+
+  /* USER CODE END RTC_Init 1 */
+  /** Initialize RTC Only
   */
-    hrtc.Instance = RTC;
-    hrtc.Init.HourFormat = RTC_HOURFORMAT_24;
-    hrtc.Init.AsynchPrediv = 128 - 1;
-    hrtc.Init.SynchPrediv = 312 - 1;
-    hrtc.Init.OutPut = RTC_OUTPUT_DISABLE;
-    hrtc.Init.OutPutPolarity = RTC_OUTPUT_POLARITY_HIGH;
-    hrtc.Init.OutPutType = RTC_OUTPUT_TYPE_OPENDRAIN;
-    if (HAL_RTC_Init(&hrtc) != HAL_OK) {
-        Error_Handler();
-    }
-    /* USER CODE BEGIN RTC_Init 2 */
-    /* USER CODE END RTC_Init 2 */
+  hrtc.Instance = RTC;
+  hrtc.Init.HourFormat = RTC_HOURFORMAT_24;
+  hrtc.Init.AsynchPrediv = 128 - 1;
+  hrtc.Init.SynchPrediv = 312 - 1;
+  hrtc.Init.OutPut = RTC_OUTPUT_DISABLE;
+  hrtc.Init.OutPutPolarity = RTC_OUTPUT_POLARITY_HIGH;
+  hrtc.Init.OutPutType = RTC_OUTPUT_TYPE_OPENDRAIN;
+  if (HAL_RTC_Init(&hrtc) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
+  /* USER CODE BEGIN Check_RTC_BKUP */
+
+  /* USER CODE END Check_RTC_BKUP */
+
+  /** Initialize RTC and set the Time and Date
+  */
+  sTime.Hours = 0;
+  sTime.Minutes = 0;
+  sTime.Seconds = 0;
+  sTime.DayLightSaving = RTC_DAYLIGHTSAVING_NONE;
+  sTime.StoreOperation = RTC_STOREOPERATION_RESET;
+  if (HAL_RTC_SetTime(&hrtc, &sTime, RTC_FORMAT_BIN) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sDate.WeekDay = RTC_WEEKDAY_MONDAY;
+  sDate.Month = RTC_MONTH_JANUARY;
+  sDate.Date = 1;
+  sDate.Year = 0;
+
+  if (HAL_RTC_SetDate(&hrtc, &sDate, RTC_FORMAT_BIN) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN RTC_Init 2 */
+  /* USER CODE END RTC_Init 2 */
+
 }
 
 /**
@@ -476,34 +584,36 @@ static void MX_RTC_Init(void)
 static void MX_SPI1_Init(void)
 {
 
-    /* USER CODE BEGIN SPI1_Init 0 */
+  /* USER CODE BEGIN SPI1_Init 0 */
 
-    /* USER CODE END SPI1_Init 0 */
+  /* USER CODE END SPI1_Init 0 */
 
-    /* USER CODE BEGIN SPI1_Init 1 */
+  /* USER CODE BEGIN SPI1_Init 1 */
 
-    /* USER CODE END SPI1_Init 1 */
-    /* SPI1 parameter configuration*/
-    hspi1.Instance = SPI1;
-    hspi1.Init.Mode = SPI_MODE_MASTER;
-    hspi1.Init.Direction = SPI_DIRECTION_2LINES;
-    hspi1.Init.DataSize = SPI_DATASIZE_8BIT;
-    hspi1.Init.CLKPolarity = SPI_POLARITY_LOW;
-    hspi1.Init.CLKPhase = SPI_PHASE_1EDGE;
-    hspi1.Init.NSS = SPI_NSS_SOFT;
-    hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_2;
-    hspi1.Init.FirstBit = SPI_FIRSTBIT_MSB;
-    hspi1.Init.TIMode = SPI_TIMODE_DISABLE;
-    hspi1.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
-    hspi1.Init.CRCPolynomial = 7;
-    hspi1.Init.CRCLength = SPI_CRC_LENGTH_DATASIZE;
-    hspi1.Init.NSSPMode = SPI_NSS_PULSE_ENABLE;
-    if (HAL_SPI_Init(&hspi1) != HAL_OK) {
-        Error_Handler();
-    }
-    /* USER CODE BEGIN SPI1_Init 2 */
+  /* USER CODE END SPI1_Init 1 */
+  /* SPI1 parameter configuration*/
+  hspi1.Instance = SPI1;
+  hspi1.Init.Mode = SPI_MODE_MASTER;
+  hspi1.Init.Direction = SPI_DIRECTION_2LINES;
+  hspi1.Init.DataSize = SPI_DATASIZE_8BIT;
+  hspi1.Init.CLKPolarity = SPI_POLARITY_LOW;
+  hspi1.Init.CLKPhase = SPI_PHASE_1EDGE;
+  hspi1.Init.NSS = SPI_NSS_SOFT;
+  hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_2;
+  hspi1.Init.FirstBit = SPI_FIRSTBIT_MSB;
+  hspi1.Init.TIMode = SPI_TIMODE_DISABLE;
+  hspi1.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
+  hspi1.Init.CRCPolynomial = 7;
+  hspi1.Init.CRCLength = SPI_CRC_LENGTH_DATASIZE;
+  hspi1.Init.NSSPMode = SPI_NSS_PULSE_ENABLE;
+  if (HAL_SPI_Init(&hspi1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN SPI1_Init 2 */
 
-    /* USER CODE END SPI1_Init 2 */
+  /* USER CODE END SPI1_Init 2 */
+
 }
 
 /**
@@ -514,25 +624,27 @@ static void MX_SPI1_Init(void)
 static void MX_TIM14_Init(void)
 {
 
-    /* USER CODE BEGIN TIM14_Init 0 */
+  /* USER CODE BEGIN TIM14_Init 0 */
 
-    /* USER CODE END TIM14_Init 0 */
+  /* USER CODE END TIM14_Init 0 */
 
-    /* USER CODE BEGIN TIM14_Init 1 */
+  /* USER CODE BEGIN TIM14_Init 1 */
 
-    /* USER CODE END TIM14_Init 1 */
-    htim14.Instance = TIM14;
-    htim14.Init.Prescaler = 8000 - 1;
-    htim14.Init.CounterMode = TIM_COUNTERMODE_UP;
-    htim14.Init.Period = 1000;
-    htim14.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
-    htim14.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
-    if (HAL_TIM_Base_Init(&htim14) != HAL_OK) {
-        Error_Handler();
-    }
-    /* USER CODE BEGIN TIM14_Init 2 */
+  /* USER CODE END TIM14_Init 1 */
+  htim14.Instance = TIM14;
+  htim14.Init.Prescaler = 8000 -1;
+  htim14.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim14.Init.Period = 1000;
+  htim14.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim14.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim14) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM14_Init 2 */
 
-    /* USER CODE END TIM14_Init 2 */
+  /* USER CODE END TIM14_Init 2 */
+
 }
 
 /**
@@ -542,49 +654,51 @@ static void MX_TIM14_Init(void)
   */
 static void MX_GPIO_Init(void)
 {
-    GPIO_InitTypeDef GPIO_InitStruct = { 0 };
+  GPIO_InitTypeDef GPIO_InitStruct = {0};
 
-    /* GPIO Ports Clock Enable */
-    __HAL_RCC_GPIOA_CLK_ENABLE();
-    __HAL_RCC_GPIOB_CLK_ENABLE();
+  /* GPIO Ports Clock Enable */
+  __HAL_RCC_GPIOA_CLK_ENABLE();
+  __HAL_RCC_GPIOB_CLK_ENABLE();
 
-    /*Configure GPIO pin Output Level */
-    HAL_GPIO_WritePin(GPIOA, Enable_Pin | DB7_Pin | DB6_Pin | DB5_Pin | DB4_Pin | E_Pin | RW_Pin | RS_Pin, GPIO_PIN_RESET);
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOA, Enable_Pin|DB7_Pin|DB6_Pin|DB5_Pin
+                          |DB4_Pin|E_Pin|RW_Pin|RS_Pin, GPIO_PIN_RESET);
 
-    /*Configure GPIO pin Output Level */
-    HAL_GPIO_WritePin(GPIOB, LAT0_Pin | CS_DAC_Pin, GPIO_PIN_RESET);
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOB, LAT0_Pin|CS_DAC_Pin, GPIO_PIN_RESET);
 
-    /*Configure GPIO pins : Enable_Pin DB7_Pin DB6_Pin DB5_Pin
+  /*Configure GPIO pins : Enable_Pin DB7_Pin DB6_Pin DB5_Pin
                            DB4_Pin E_Pin RW_Pin RS_Pin */
-    GPIO_InitStruct.Pin = Enable_Pin | DB7_Pin | DB6_Pin | DB5_Pin
-        | DB4_Pin | E_Pin | RW_Pin | RS_Pin;
-    GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-    GPIO_InitStruct.Pull = GPIO_NOPULL;
-    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-    HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+  GPIO_InitStruct.Pin = Enable_Pin|DB7_Pin|DB6_Pin|DB5_Pin
+                          |DB4_Pin|E_Pin|RW_Pin|RS_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
-    /*Configure GPIO pins : S1_Pin S3_Pin */
-    GPIO_InitStruct.Pin = S1_Pin | S3_Pin;
-    GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING_FALLING;
-    GPIO_InitStruct.Pull = GPIO_NOPULL;
-    HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+  /*Configure GPIO pins : S1_Pin S3_Pin */
+  GPIO_InitStruct.Pin = S1_Pin|S3_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING_FALLING;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
-    /*Configure GPIO pin : S2_Pin */
-    GPIO_InitStruct.Pin = S2_Pin;
-    GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING_FALLING;
-    GPIO_InitStruct.Pull = GPIO_PULLUP;
-    HAL_GPIO_Init(S2_GPIO_Port, &GPIO_InitStruct);
+  /*Configure GPIO pin : S2_Pin */
+  GPIO_InitStruct.Pin = S2_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING_FALLING;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
+  HAL_GPIO_Init(S2_GPIO_Port, &GPIO_InitStruct);
 
-    /*Configure GPIO pins : LAT0_Pin CS_DAC_Pin */
-    GPIO_InitStruct.Pin = LAT0_Pin | CS_DAC_Pin;
-    GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-    GPIO_InitStruct.Pull = GPIO_NOPULL;
-    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-    HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+  /*Configure GPIO pins : LAT0_Pin CS_DAC_Pin */
+  GPIO_InitStruct.Pin = LAT0_Pin|CS_DAC_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
-    /* EXTI interrupt init*/
-    HAL_NVIC_SetPriority(EXTI4_15_IRQn, 0, 0);
-    HAL_NVIC_EnableIRQ(EXTI4_15_IRQn);
+  /* EXTI interrupt init*/
+  HAL_NVIC_SetPriority(EXTI4_15_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(EXTI4_15_IRQn);
+
 }
 
 /* USER CODE BEGIN 4 */
@@ -597,13 +711,13 @@ static void MX_GPIO_Init(void)
   */
 void Error_Handler(void)
 {
-    /* USER CODE BEGIN Error_Handler_Debug */
+  /* USER CODE BEGIN Error_Handler_Debug */
     /* User can add his own implementation to report the HAL error return state */
 
-    /* USER CODE END Error_Handler_Debug */
+  /* USER CODE END Error_Handler_Debug */
 }
 
-#ifdef USE_FULL_ASSERT
+#ifdef  USE_FULL_ASSERT
 /**
   * @brief  Reports the name of the source file and the source line number
   *         where the assert_param error has occurred.
@@ -611,12 +725,12 @@ void Error_Handler(void)
   * @param  line: assert_param error line source number
   * @retval None
   */
-void assert_failed(uint8_t* file, uint32_t line)
+void assert_failed(uint8_t *file, uint32_t line)
 {
-    /* USER CODE BEGIN 6 */
+  /* USER CODE BEGIN 6 */
     /* User can add his own implementation to report the file name and line number,
      tex: printf("Wrong parameters value: file %s on line %d\r\n", file, line) */
-    /* USER CODE END 6 */
+  /* USER CODE END 6 */
 }
 #endif /* USE_FULL_ASSERT */
 

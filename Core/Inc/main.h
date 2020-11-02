@@ -41,7 +41,7 @@ enum DISPLAY_STATE {
     STATE_SPLASH,
 
     STATE_UV_SELECT,
-    STATE_FLUENCE_SELECT,
+    STATE_DOSE_SELECT,
     STATE_RATE_SELECT,
 
     STATE_INIT,
@@ -68,12 +68,11 @@ typedef struct {
     uint8_t enabled;
     uint8_t dac;
 
-    uint16_t fluence;
-    uint16_t rate;
-    uint32_t total;
+    uint32_t rate;
+    uint32_t dose;
     uint32_t delivered;
 
-    uint16_t seconds_remaining;
+    RTC_TimeTypeDef end_time;
 } state_t;
 /* USER CODE END ET */
 
@@ -133,8 +132,8 @@ void Error_Handler(void);
 #define DAC_MAX 252 // 0.0 mA
 #define DAC_STEPS (DAC_MAX - DAC_MIN)
 
-#define UVA_RATE_STEP_MJ ((uint32_t)((UVA_POWER_MAX * 10.f * 1000.f) / (AREA * DAC_STEPS)))
-#define UVC_RATE_STEP_MJ ((uint32_t)((UVC_POWER_MAX * 10.f * 1000.f) / (AREA * DAC_STEPS)))
+#define UVA_RATE_STEP ((uint32_t)((UVA_POWER_MAX * 10.f * 1000.f) / (AREA * DAC_STEPS))) // mJ/m2/s
+#define UVC_RATE_STEP ((uint32_t)((UVC_POWER_MAX * 10.f * 1000.f) / (AREA * DAC_STEPS))) // mJ/m2/s
 
 /* USER CODE END Private defines */
 
