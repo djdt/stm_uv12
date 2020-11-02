@@ -64,8 +64,8 @@ oled0010_t oled = {
 };
 
 state_t state = { STATE_SPLASH, UVMODE_A, UPDATE_NONE,
-    0, DAC_MAX,
-    0, 1000, 0 };
+    0, DAC_MAX - 1,
+    0, 0, 1000, 0 };
 
 /* char time_string[] = "00:00"; */
 char strbuf[16];
@@ -88,36 +88,6 @@ static void MX_RTC_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-/* void get_energy_density_string(char* str, uint8_t dac, enum UVMODE mode) */
-/* { */
-/*     // xx.xx J/m²/s */
-/*     uint32_t efd = 0; */
-/*     if (mode == UVMODE_A) { */
-/*         efd = ((DAC_STEPS - (dac - 16)) * UV_FLUX_INT_STEP_MJ(UVA_POWER_MAX)) / 10; */
-/*     } else if (mode == UVMODE_C) { */
-/*         efd = ((DAC_STEPS - (dac - 16)) * UV_FLUX_INT_STEP_MJ(UVC_POWER_MAX)) / 10; */
-/*     } */
-
-/*     // 4 digits */
-/*     str[4] = efd % 10 + '0'; */
-/*     str[3] = (efd /= 10) % 10 + '0'; */
-
-/*     str[1] = (efd /= 10) % 10 + '0'; */
-/*     str[0] = (efd /= 10) % 10 + '0'; */
-/* } */
-
-/* void get_time_string(char* str) */
-/* { */
-/*     RTC_TimeTypeDef t; */
-/*     RTC_DateTypeDef d; */
-/*     HAL_RTC_GetTime(&hrtc, &t, RTC_FORMAT_BCD); */
-/*     HAL_RTC_GetDate(&hrtc, &d, RTC_FORMAT_BCD); */
-
-/*     str[0] = (t.Minutes >> 4) + '0'; */
-/*     str[1] = (t.Minutes & 0x0f) + '0'; */
-/*     str[3] = (t.Seconds >> 4) + '0'; */
-/*     str[4] = (t.Seconds & 0x0f) + '0'; */
-/* } */
 
 void get_time_string(char* str, RTC_TimeTypeDef* t)
 {
@@ -218,21 +188,6 @@ void print_uv_select(oled0010_t* oled, enum UVMODE mode)
     oled_print_char(oled, '\xc6');
 }
 
-/* void print_time_select(oled0010_t* oled, RTC_TimeTypeDef* t) */
-/* { */
-/*     get_time_string(time_string, t); */
-
-/*     oled_move_cursor(oled, 0, 0); */
-/*     oled_print(oled, "Treatment Time"); */
-/*     oled_move_cursor(oled, 15, 0); */
-/*     oled_print_char(oled, '\xc5'); */
-
-/*     oled_move_cursor(oled, 0, 1); */
-/*     oled_print(oled, time_string); */
-/*     oled_move_cursor(oled, 15, 1); */
-/*     oled_print_char(oled, '\xc6'); */
-/* } */
-
 void print_dose_select(oled0010_t* oled, uint32_t dose)
 {
     uint8_t len = get_int_string(strbuf, dose / 1000);
@@ -271,36 +226,21 @@ void print_rate_select(oled0010_t* oled, uint32_t rate)
 
 void print_main(oled0010_t* oled, char sym, enum UVMODE mode, uint32_t seconds, uint32_t delivered)
 {
+    get_seconds_string(strbuf, seconds);
     oled_move_cursor(oled, 0, 0);
     oled_print(oled, mode == UVMODE_A ? "UVA" : (mode == UVMODE_B ? "UVB" : "UVC"));
     oled_move_cursor(oled, 4, 0);
     oled_print_char(oled, sym);
-    get_seconds_string(strbuf, seconds);
-    oled_move_cursor(oled, 10, 0);
+    oled_move_cursor(oled, 16 - 5, 0);
     oled_print(oled, strbuf);
 
+    uint32_t len = get_decimal_string(strbuf, delivered, 3);
     oled_move_cursor(oled, 0, 1);
-    oled_print(oled, "Total ");
-    char str[] = "      J/m"
-                 "\x1e";
-    /* get_5digit_string(str, delivered / 1000); */
-    oled_print(oled, str);
+    oled_pad(oled, 16 - 5 - len);
+    oled_print(oled, strbuf);
+    oled_print(oled, (char*)dose_units);
 }
 
-/* void print_paused(oled0010_t* oled, enum UVMODE mode, uint32_t seconds, uint32_t delivered) */
-/* { */
-/*     oled_move_cursor(oled, 0, 0); */
-/*     oled_print(oled, mode == UVMODE_A ? "UVA" : (mode == UVMODE_B ? "UVB" : "UVC")); */
-/*     oled_print(oled, " =      "); */
-/*     get_seconds_string(time_string, seconds); */
-/*     oled_print(oled, time_string); */
-/*     oled_move_cursor(oled, 0, 1); */
-/*     oled_print(oled, "Total "); */
-/*     char str[] = "      J/m" */
-/*                  "\x1e"; */
-/*     get_5digit_string(str, delivered / 1000); */
-/*     oled_print(oled, str); */
-/* } */
 /* USER CODE END 0 */
 
 /**
@@ -310,12 +250,6 @@ void print_main(oled0010_t* oled, char sym, enum UVMODE mode, uint32_t seconds, 
 int main(void)
 {
     /* USER CODE BEGIN 1 */
-    /* char time_string[] = "00:00"; */
-    /* char efd_string[] = "00.00 J/m" */
-    /*                     "\x1e" */
-    /*                     "/s"; */
-    uint32_t step;
-    uint32_t rate;
     /* USER CODE END 1 */
 
     /* MCU Configuration--------------------------------------------------------*/
@@ -361,22 +295,13 @@ int main(void)
     print_splash(&oled);
 
     // Reenable the button interrupts
+    HAL_NVIC_EnableIRQ(RTC_IRQn);
     HAL_NVIC_EnableIRQ(EXTI4_15_IRQn);
     /* USER CODE END 2 */
 
     /* Infinite loop */
     /* USER CODE BEGIN WHILE */
     while (1) {
-        /* i += 9; */
-        /* uint8_t l = get_int_string(strbuf, i); */
-        /* oled_clear_display(&oled); */
-        /* oled_move_cursor(&oled, 0, 0); */
-        /* oled_print(&oled, strbuf); */
-        /* l = get_decimal_string(strbuf, i, 3); */
-        /* oled_move_cursor(&oled, 0, 1); */
-        /* oled_print(&oled, strbuf); */
-        /* HAL_Delay(300); */
-        /* continue; */
 
         /* HAL_NVIC_DisableIRQ(RTC_IRQn); */
         if (state.update & UPDATE_DISPLAY) {
@@ -401,62 +326,16 @@ int main(void)
             print_dose_select(&oled, state.dose);
             break;
         case STATE_RATE_SELECT:
-            step = state.mode == UVMODE_A ? UVA_RATE_STEP : UVC_RATE_STEP;
-            rate = (DAC_STEPS - (state.dac - DAC_MIN)) * step;
-            print_rate_select(&oled, rate);
+            print_rate_select(&oled, state.rate);
             break;
-        case STATE_INIT:
-            /* state.seconds_remaining = ((uint32_t)(state.fluence) * 1000 / state.rate); */
-            state.delivered = 0;
-            state.display = STATE_PAUSED;
-            state.seconds_remaining = state.dose / state.rate;
-            // Fall through
         case STATE_PAUSED:
-            print_main(&oled, '=', state.mode, state.seconds_remaining, state.delivered);
+            print_main(&oled, '=', state.mode, state.remaining, state.delivered);
             break;
-
-            /* oled_move_cursor(&oled, 0, 0); */
-            /* oled_print(&oled, state.mode == UVMODE_A ? "UVA" : "UVC"); */
-
         case STATE_RUNNING:
-            if (state.delivered < state.dose) {
-                state.delivered += state.rate;
-            } else {
-                state.display = STATE_FINISHED;
-            }
-            print_main(&oled, '\xf6', state.mode, state.seconds_remaining, state.delivered);
-            // Update Enable
-            /* if (state.update & UPDATE_ENABLE) { */
-            /*     HAL_GPIO_WritePin(Enable_GPIO_Port, Enable_Pin, */
-            /*         state.enabled ? GPIO_PIN_SET : GPIO_PIN_RESET); */
-            /*     HAL_RTC_SetTime(&hrtc, &tzero, RTC_FORMAT_BCD); */
-
-            /*     oled_move_cursor(&oled, 0, 0); */
-            /*     oled_print(&oled, state.mode == UVMODE_A ? "UVA" : "UVC"); */
-            /*     oled_print(&oled, (state.enabled ? " On " : " Off")); */
-            /*     state.update &= ~UPDATE_ENABLE; */
-            /* } */
-            /* // Update DAC */
-            /* if (state.update & UPDATE_DAC) { */
-            /*     mcp_set_dac(&mcp, state.dac); */
-
-            /*     oled_move_cursor(&oled, 4, 1); */
-            /*     /1* get_energy_density_string(efd_string, state.dac, state.mode); *1/ */
-            /*     oled_print(&oled, efd_string); */
-            /*     state.update &= ~UPDATE_DAC; */
-            /* } */
-
-            /* // Update the time */
-            /* if (state.enabled) { */
-            /*     RTC_TimeTypeDef t; */
-            /*     RTC_DateTypeDef d; */
-            /*     HAL_RTC_GetTime(&hrtc, &t, RTC_FORMAT_BCD); */
-            /*     HAL_RTC_GetDate(&hrtc, &d, RTC_FORMAT_BCD); */
-
-            /*     oled_move_cursor(&oled, 11, 0); */
-            /*     get_time_string(time_string, &t); */
-            /*     oled_print(&oled, time_string); */
-            /* } */
+            print_main(&oled, '\xf6', state.mode, state.remaining, state.delivered);
+            break;
+        case STATE_FINISHED:
+            print_main(&oled, '\xfa', state.mode, state.remaining, state.delivered);
             break;
         default:
             break;
@@ -526,6 +405,7 @@ static void MX_RTC_Init(void)
 
     RTC_TimeTypeDef sTime = { 0 };
     RTC_DateTypeDef sDate = { 0 };
+    RTC_AlarmTypeDef sAlarm = { 0 };
 
     /* USER CODE BEGIN RTC_Init 1 */
     // Predivs calced from a 15 min run
@@ -536,8 +416,8 @@ static void MX_RTC_Init(void)
   */
     hrtc.Instance = RTC;
     hrtc.Init.HourFormat = RTC_HOURFORMAT_24;
-    hrtc.Init.AsynchPrediv = 124 - 1;
-    hrtc.Init.SynchPrediv = 307 - 1;
+    hrtc.Init.AsynchPrediv = 128 - 1;
+    hrtc.Init.SynchPrediv = 312 - 1;
     hrtc.Init.OutPut = RTC_OUTPUT_DISABLE;
     hrtc.Init.OutPutPolarity = RTC_OUTPUT_POLARITY_HIGH;
     hrtc.Init.OutPutType = RTC_OUTPUT_TYPE_OPENDRAIN;
@@ -565,6 +445,22 @@ static void MX_RTC_Init(void)
     sDate.Year = 0;
 
     if (HAL_RTC_SetDate(&hrtc, &sDate, RTC_FORMAT_BIN) != HAL_OK) {
+        Error_Handler();
+    }
+    /** Enable the Alarm A
+  */
+    sAlarm.AlarmTime.Hours = 0;
+    sAlarm.AlarmTime.Minutes = 0;
+    sAlarm.AlarmTime.Seconds = 0;
+    sAlarm.AlarmTime.SubSeconds = 0;
+    sAlarm.AlarmTime.DayLightSaving = RTC_DAYLIGHTSAVING_NONE;
+    sAlarm.AlarmTime.StoreOperation = RTC_STOREOPERATION_RESET;
+    sAlarm.AlarmMask = RTC_ALARMMASK_ALL;
+    sAlarm.AlarmSubSecondMask = RTC_ALARMSUBSECONDMASK_ALL;
+    sAlarm.AlarmDateWeekDaySel = RTC_ALARMDATEWEEKDAYSEL_DATE;
+    sAlarm.AlarmDateWeekDay = 1;
+    sAlarm.Alarm = RTC_ALARM_A;
+    if (HAL_RTC_SetAlarm_IT(&hrtc, &sAlarm, RTC_FORMAT_BIN) != HAL_OK) {
         Error_Handler();
     }
     /* USER CODE BEGIN RTC_Init 2 */

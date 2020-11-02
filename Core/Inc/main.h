@@ -68,11 +68,12 @@ typedef struct {
     uint8_t enabled;
     uint8_t dac;
 
+    uint16_t step;
     uint32_t rate;
     uint32_t dose;
     uint32_t delivered;
 
-    RTC_TimeTypeDef end_time;
+    uint32_t remaining;
 } state_t;
 /* USER CODE END ET */
 
@@ -126,6 +127,7 @@ void Error_Handler(void);
 /* USER CODE BEGIN Private defines */
 #define AREA 3.8f // cm2
 #define UVA_POWER_MAX 34.5f // mW
+#define UVB_POWER_MAX 0.0f // mW
 #define UVC_POWER_MAX 3.3f // mW
 
 #define DAC_MIN 16 // 30.0 mA
@@ -133,6 +135,7 @@ void Error_Handler(void);
 #define DAC_STEPS (DAC_MAX - DAC_MIN)
 
 #define UVA_RATE_STEP ((uint32_t)((UVA_POWER_MAX * 10.f * 1000.f) / (AREA * DAC_STEPS))) // mJ/m2/s
+#define UVB_RATE_STEP ((uint32_t)((UVB_POWER_MAX * 10.f * 1000.f) / (AREA * DAC_STEPS))) // mJ/m2/s
 #define UVC_RATE_STEP ((uint32_t)((UVC_POWER_MAX * 10.f * 1000.f) / (AREA * DAC_STEPS))) // mJ/m2/s
 
 /* USER CODE END Private defines */
