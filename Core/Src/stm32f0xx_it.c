@@ -19,8 +19,8 @@
 /* USER CODE END Header */
 
 /* Includes ------------------------------------------------------------------*/
-#include "stm32f0xx_it.h"
 #include "main.h"
+#include "stm32f0xx_it.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 /* USER CODE END Includes */
@@ -58,7 +58,6 @@ uint8_t button_held = 0;
 /* USER CODE END 0 */
 
 /* External variables --------------------------------------------------------*/
-extern RTC_HandleTypeDef hrtc;
 extern TIM_HandleTypeDef htim14;
 /* USER CODE BEGIN EV */
 extern state_t state;
@@ -73,12 +72,12 @@ extern TIM_HandleTypeDef htim14;
   */
 void NMI_Handler(void)
 {
-    /* USER CODE BEGIN NonMaskableInt_IRQn 0 */
+  /* USER CODE BEGIN NonMaskableInt_IRQn 0 */
 
-    /* USER CODE END NonMaskableInt_IRQn 0 */
-    /* USER CODE BEGIN NonMaskableInt_IRQn 1 */
+  /* USER CODE END NonMaskableInt_IRQn 0 */
+  /* USER CODE BEGIN NonMaskableInt_IRQn 1 */
 
-    /* USER CODE END NonMaskableInt_IRQn 1 */
+  /* USER CODE END NonMaskableInt_IRQn 1 */
 }
 
 /**
@@ -86,13 +85,14 @@ void NMI_Handler(void)
   */
 void HardFault_Handler(void)
 {
-    /* USER CODE BEGIN HardFault_IRQn 0 */
+  /* USER CODE BEGIN HardFault_IRQn 0 */
 
-    /* USER CODE END HardFault_IRQn 0 */
-    while (1) {
-        /* USER CODE BEGIN W1_HardFault_IRQn 0 */
-        /* USER CODE END W1_HardFault_IRQn 0 */
-    }
+  /* USER CODE END HardFault_IRQn 0 */
+  while (1)
+  {
+    /* USER CODE BEGIN W1_HardFault_IRQn 0 */
+    /* USER CODE END W1_HardFault_IRQn 0 */
+  }
 }
 
 /**
@@ -100,12 +100,12 @@ void HardFault_Handler(void)
   */
 void SVC_Handler(void)
 {
-    /* USER CODE BEGIN SVC_IRQn 0 */
+  /* USER CODE BEGIN SVC_IRQn 0 */
 
-    /* USER CODE END SVC_IRQn 0 */
-    /* USER CODE BEGIN SVC_IRQn 1 */
+  /* USER CODE END SVC_IRQn 0 */
+  /* USER CODE BEGIN SVC_IRQn 1 */
 
-    /* USER CODE END SVC_IRQn 1 */
+  /* USER CODE END SVC_IRQn 1 */
 }
 
 /**
@@ -113,12 +113,12 @@ void SVC_Handler(void)
   */
 void PendSV_Handler(void)
 {
-    /* USER CODE BEGIN PendSV_IRQn 0 */
+  /* USER CODE BEGIN PendSV_IRQn 0 */
 
-    /* USER CODE END PendSV_IRQn 0 */
-    /* USER CODE BEGIN PendSV_IRQn 1 */
+  /* USER CODE END PendSV_IRQn 0 */
+  /* USER CODE BEGIN PendSV_IRQn 1 */
 
-    /* USER CODE END PendSV_IRQn 1 */
+  /* USER CODE END PendSV_IRQn 1 */
 }
 
 /**
@@ -126,13 +126,13 @@ void PendSV_Handler(void)
   */
 void SysTick_Handler(void)
 {
-    /* USER CODE BEGIN SysTick_IRQn 0 */
+  /* USER CODE BEGIN SysTick_IRQn 0 */
 
-    /* USER CODE END SysTick_IRQn 0 */
-    HAL_IncTick();
-    /* USER CODE BEGIN SysTick_IRQn 1 */
+  /* USER CODE END SysTick_IRQn 0 */
+  HAL_IncTick();
+  /* USER CODE BEGIN SysTick_IRQn 1 */
 
-    /* USER CODE END SysTick_IRQn 1 */
+  /* USER CODE END SysTick_IRQn 1 */
 }
 
 /******************************************************************************/
@@ -143,41 +143,17 @@ void SysTick_Handler(void)
 /******************************************************************************/
 
 /**
-  * @brief This function handles RTC interrupt through EXTI lines 17, 19 and 20.
-  */
-void RTC_IRQHandler(void)
-{
-    /* USER CODE BEGIN RTC_IRQn 0 */
-
-    /* USER CODE END RTC_IRQn 0 */
-    HAL_RTC_AlarmIRQHandler(&hrtc);
-    /* USER CODE BEGIN RTC_IRQn 1 */
-    switch (state.display) {
-    case STATE_RUNNING:
-        if (state.delivered < state.total) {
-            state.delivered += state.rate;
-        } else {
-            state.display = STATE_FINISHED;
-        }
-        break;
-    default:
-        break;
-    }
-    /* USER CODE END RTC_IRQn 1 */
-}
-
-/**
   * @brief This function handles EXTI line 4 to 15 interrupts.
   */
 void EXTI4_15_IRQHandler(void)
 {
-    /* USER CODE BEGIN EXTI4_15_IRQn 0 */
-    /* USER CODE END EXTI4_15_IRQn 0 */
-    HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_8);
-    HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_9);
-    HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_10);
-    /* USER CODE BEGIN EXTI4_15_IRQn 1 */
-    /* USER CODE END EXTI4_15_IRQn 1 */
+  /* USER CODE BEGIN EXTI4_15_IRQn 0 */
+  /* USER CODE END EXTI4_15_IRQn 0 */
+  HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_8);
+  HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_9);
+  HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_10);
+  /* USER CODE BEGIN EXTI4_15_IRQn 1 */
+  /* USER CODE END EXTI4_15_IRQn 1 */
 }
 
 /**
@@ -185,7 +161,7 @@ void EXTI4_15_IRQHandler(void)
   */
 void TIM14_IRQHandler(void)
 {
-    /* USER CODE BEGIN TIM14_IRQn 0 */
+  /* USER CODE BEGIN TIM14_IRQn 0 */
     if (!button_held) {
         // Fast timer
         htim14.Init.Period = 50;
@@ -195,9 +171,9 @@ void TIM14_IRQHandler(void)
         HAL_TIM_Base_Start_IT(&htim14);
         button_held = 1;
     }
-    /* USER CODE END TIM14_IRQn 0 */
-    HAL_TIM_IRQHandler(&htim14);
-    /* USER CODE BEGIN TIM14_IRQn 1 */
+  /* USER CODE END TIM14_IRQn 0 */
+  HAL_TIM_IRQHandler(&htim14);
+  /* USER CODE BEGIN TIM14_IRQn 1 */
     switch (state.display) {
     case STATE_FLUENCE_SELECT:
         switch (last_pin_pressed) {
@@ -226,7 +202,7 @@ void TIM14_IRQHandler(void)
     default:
         break;
     }
-    /* USER CODE END TIM14_IRQn 1 */
+  /* USER CODE END TIM14_IRQn 1 */
 }
 
 /* USER CODE BEGIN 1 */
@@ -240,6 +216,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t pin)
         HAL_TIM_Base_Init(&htim14);
         __HAL_TIM_SET_COUNTER(&htim14, 0);
         __HAL_TIM_CLEAR_IT(&htim14, TIM_IT_UPDATE);
+        HAL_TIM_Base_Start(&htim14);
         HAL_TIM_Base_Start_IT(&htim14);
     } else {
         uint16_t len = __HAL_TIM_GET_COUNTER(&htim14);
@@ -326,9 +303,9 @@ void HAL_GPIO_EXTI_Callback(uint16_t pin)
             }
             // Long presses handled in TIM14_IRQHandler
         }
-        button_held = 0;
         HAL_TIM_Base_Stop_IT(&htim14);
     }
+    button_held = 0;
 }
 /* USER CODE END 1 */
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/
