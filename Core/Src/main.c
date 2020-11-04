@@ -164,7 +164,7 @@ uint8_t get_decimal_string(char* str, uint32_t n, uint8_t decimals)
 
 void oled_pad(oled0010_t* oled, uint8_t n)
 {
-    for (; n > 0; n--) {
+    while (n-- > 0) {
         oled_print_char(oled, ' ');
     }
 }
@@ -203,7 +203,7 @@ void print_dose_select(oled0010_t* oled, uint32_t dose)
     oled_print_char(oled, '\xc5');
 
     oled_move_cursor(oled, 0, 1);
-    oled_pad(oled, 14 - len_dose_units - len);
+    oled_pad(oled, 15 - len - (len_dose_units + 1));
     oled_print(oled, strbuf);
     oled_print_char(oled, ' ');
     oled_print(oled, (char*)dose_units);
@@ -222,7 +222,7 @@ void print_rate_select(oled0010_t* oled, uint32_t rate)
     oled_print_char(oled, '\xc5');
 
     oled_move_cursor(oled, 0, 1);
-    oled_pad(oled, 14 - len_rate_units - len);
+    oled_pad(oled, 15 - len - (len_dose_units + 1));
     oled_print(oled, strbuf);
     oled_print_char(oled, ' ');
     oled_print(oled, (char*)rate_units);
@@ -238,14 +238,14 @@ void print_main(oled0010_t* oled, char sym, enum UVMODE mode, uint32_t seconds, 
     oled_print(oled, mode == UVMODE_A ? "UVA" : (mode == UVMODE_B ? "UVB" : "UVC"));
     oled_move_cursor(oled, 4, 0);
     oled_print_char(oled, sym);
-    oled_move_cursor(oled, 15 - 5, 0);
+    oled_move_cursor(oled, 16 - 5, 0);
     oled_print(oled, strbuf);
 
     uint32_t len = get_decimal_string(strbuf, delivered, 3);
     oled_move_cursor(oled, 0, 1);
     oled_print_char(oled, CELL_ANIMATION_ADR + state.frame);
 
-    oled_pad(oled, 15 - 1 - len_dose_units - len);
+    oled_pad(oled, 15 - len - (len_dose_units + 1));
     oled_print(oled, strbuf);
     oled_print_char(oled, ' ');
     oled_print(oled, (char*)dose_units);
