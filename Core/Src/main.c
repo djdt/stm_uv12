@@ -333,7 +333,7 @@ int main(void)
             print_rate_select(&oled, state.rate);
             break;
         case STATE_PAUSED:
-            print_main(&oled, '=', state.mode, state.remaining, state.delivered);
+            print_main(&oled, '\xff', state.mode, state.remaining, state.delivered);
             break;
         case STATE_RUNNING:
             print_main(&oled, '\xf6', state.mode, state.remaining, state.delivered);
