@@ -157,10 +157,17 @@ void RTC_IRQHandler(void)
         state.remaining -= 1;
         if (state.delivered > state.dose) {
             state.display = STATE_FINISHED;
+            // Reset the timer
+            state.remaining = state.dose / state.rate + 1;
+            // Turn off
             state.enabled = 0;
             state.update |= UPDATE_ENABLE;
         }
     }
+    // Increment animation frames
+    state.frame += 1;
+    if (state.frame > CELL_ANIMATION_FRAMES)
+        state.frame = 0;
     /* USER CODE END RTC_IRQn 1 */
 }
 
@@ -360,7 +367,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t pin)
                 switch (pin) {
                 case S3_Pin:
                     state.delivered = 0;
-                    state.remaining = state.dose / state.rate + 1;
+                    /* state.remaining = state.dose / state.rate + 1; */
                     state.display = STATE_PAUSED;
                     break;
                 }

@@ -69,11 +69,12 @@ state_t state = { STATE_SPLASH, UVMODE_A, UPDATE_NONE,
 
 /* char time_string[] = "00:00"; */
 char strbuf[16];
-const char dose_units[] = " J/m"
+const char dose_units[] = "J/m"
                           "\x1e";
-const char rate_units[] = " J/m"
-                          "\x1e"
-                          "/s";
+uint8_t len_dose_units = 4;
+const char rate_units[] = "W/m"
+                          "\x1e";
+uint8_t len_rate_units = 4;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -198,8 +199,9 @@ void print_dose_select(oled0010_t* oled, uint32_t dose)
     oled_print_char(oled, '\xc5');
 
     oled_move_cursor(oled, 0, 1);
-    oled_pad(oled, 14 - 5 - len);
+    oled_pad(oled, 14 - len_dose_units - len);
     oled_print(oled, strbuf);
+    oled_print_char(oled, ' ');
     oled_print(oled, (char*)dose_units);
 
     oled_move_cursor(oled, 15, 1);
@@ -216,8 +218,9 @@ void print_rate_select(oled0010_t* oled, uint32_t rate)
     oled_print_char(oled, '\xc5');
 
     oled_move_cursor(oled, 0, 1);
-    oled_pad(oled, 14 - 7 - len);
+    oled_pad(oled, 14 - len_rate_units - len);
     oled_print(oled, strbuf);
+    oled_print_char(oled, ' ');
     oled_print(oled, (char*)rate_units);
 
     oled_move_cursor(oled, 15, 1);
@@ -236,8 +239,9 @@ void print_main(oled0010_t* oled, char sym, enum UVMODE mode, uint32_t seconds, 
 
     uint32_t len = get_decimal_string(strbuf, delivered, 3);
     oled_move_cursor(oled, 0, 1);
-    oled_pad(oled, 16 - 5 - len);
+    oled_pad(oled, 16 - len_dose_units - len);
     oled_print(oled, strbuf);
+    oled_print_char(oled, ' ');
     oled_print(oled, (char*)dose_units);
 }
 

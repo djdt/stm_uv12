@@ -74,6 +74,7 @@ typedef struct {
     uint32_t delivered;
 
     uint32_t remaining;
+    uint8_t frame;
 } state_t;
 /* USER CODE END ET */
 
@@ -125,6 +126,8 @@ void Error_Handler(void);
 #define CS_DAC_Pin GPIO_PIN_7
 #define CS_DAC_GPIO_Port GPIOB
 /* USER CODE BEGIN Private defines */
+#define CELL_ANIMATION_FRAMES 3
+
 #define AREA 3.8f // cm2
 #define UVA_POWER_MAX 34.5f // mW
 #define UVB_POWER_MAX 0.0f // mW
