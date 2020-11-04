@@ -126,7 +126,8 @@ void Error_Handler(void);
 #define CS_DAC_Pin GPIO_PIN_7
 #define CS_DAC_GPIO_Port GPIOB
 /* USER CODE BEGIN Private defines */
-#define CELL_ANIMATION_FRAMES 3
+#define CELL_ANIMATION_ADR 0x04
+#define CELL_ANIMATION_FRAMES 4
 
 #define AREA 3.8f // cm2
 #define UVA_POWER_MAX 34.5f // mW

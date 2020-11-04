@@ -67,7 +67,6 @@ state_t state = { STATE_SPLASH, UVMODE_A, UPDATE_NONE,
     0, DAC_MAX - 1,
     0, 0, 1000, 0 };
 
-/* char time_string[] = "00:00"; */
 char strbuf[16];
 const char dose_units[] = "J/m"
                           "\x1e";
@@ -75,6 +74,11 @@ uint8_t len_dose_units = 4;
 const char rate_units[] = "W/m"
                           "\x1e";
 uint8_t len_rate_units = 4;
+
+const uint8_t cell_f1[8] = {0x00, 0x04, 0x0a, 0x11, 0x15, 0x11, 0x0e, 0x00};
+const uint8_t cell_f2[8] = {0x00, 0x00, 0x06, 0x09, 0x15, 0x11, 0x0e, 0x00};
+const uint8_t cell_f3[8] = {0x00, 0x06, 0x09, 0x15, 0x11, 0x09, 0x06, 0x00};
+const uint8_t cell_f4[8] = {0x00, 0x0c, 0x12, 0x15, 0x11, 0x0e, 0x00, 0x00};
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -234,12 +238,14 @@ void print_main(oled0010_t* oled, char sym, enum UVMODE mode, uint32_t seconds, 
     oled_print(oled, mode == UVMODE_A ? "UVA" : (mode == UVMODE_B ? "UVB" : "UVC"));
     oled_move_cursor(oled, 4, 0);
     oled_print_char(oled, sym);
-    oled_move_cursor(oled, 16 - 5, 0);
+    oled_move_cursor(oled, 15 - 5, 0);
     oled_print(oled, strbuf);
 
     uint32_t len = get_decimal_string(strbuf, delivered, 3);
     oled_move_cursor(oled, 0, 1);
-    oled_pad(oled, 16 - len_dose_units - len);
+    oled_print_char(oled, CELL_ANIMATION_ADR + state.frame);
+
+    oled_pad(oled, 15 - 1 - len_dose_units - len);
     oled_print(oled, strbuf);
     oled_print_char(oled, ' ');
     oled_print(oled, (char*)dose_units);
@@ -295,6 +301,11 @@ int main(void)
         OLED_DC_BLINK_OFF | OLED_DC_CURSOR_OFF,
         OLED_EM_INC | OLED_EM_DISP_SHIFT_OFF);
 
+    oled_add_character(&oled, CELL_ANIMATION_ADR + 0x00, (uint8_t*)cell_f1, 8);
+    oled_add_character(&oled, CELL_ANIMATION_ADR + 0x01, (uint8_t*)cell_f2, 8);
+    oled_add_character(&oled, CELL_ANIMATION_ADR + 0x02, (uint8_t*)cell_f3, 8);
+    oled_add_character(&oled, CELL_ANIMATION_ADR + 0x03, (uint8_t*)cell_f4, 8);
+
     // Print welcome message
     print_splash(&oled);
 
@@ -333,7 +344,7 @@ int main(void)
             print_rate_select(&oled, state.rate);
             break;
         case STATE_PAUSED:
-            print_main(&oled, '\xff', state.mode, state.remaining, state.delivered);
+            print_main(&oled, '=', state.mode, state.remaining, state.delivered);
             break;
         case STATE_RUNNING:
             print_main(&oled, '\xf6', state.mode, state.remaining, state.delivered);
