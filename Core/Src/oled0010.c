@@ -9,29 +9,24 @@ static inline void oled_clock(oled0010_t* oled)
     HAL_GPIO_WritePin(oled->e_port, oled->e_pin, GPIO_PIN_RESET);
 }
 
-uint8_t oled_read_4bit(oled0010_t* oled)
-{
-    oled_clock(oled);
-    uint8_t result = 0x00;
-    result |= HAL_GPIO_ReadPin(oled->data_port, oled->data_pins[4]) << 4;
-    result |= HAL_GPIO_ReadPin(oled->data_port, oled->data_pins[5]) << 5;
-    result |= HAL_GPIO_ReadPin(oled->data_port, oled->data_pins[6]) << 6;
-    result |= HAL_GPIO_ReadPin(oled->data_port, oled->data_pins[7]) << 7;
-    return result;
-}
+/* uint8_t oled_read_4bit(oled0010_t* oled) */
+/* { */
+/*     oled_clock(oled); */
+/*     uint8_t result = 0x00; */
+/*     result |= HAL_GPIO_ReadPin(oled->data_port, oled->data_pins[4]) << 4; */
+/*     result |= HAL_GPIO_ReadPin(oled->data_port, oled->data_pins[5]) << 5; */
+/*     result |= HAL_GPIO_ReadPin(oled->data_port, oled->data_pins[6]) << 6; */
+/*     result |= HAL_GPIO_ReadPin(oled->data_port, oled->data_pins[7]) << 7; */
+/*     return result; */
+/* } */
 
-uint8_t oled_read_8bit(oled0010_t* oled)
+uint8_t oled_read_bits(oled0010_t* oled, uint8_t bits)
 {
-    oled_clock(oled);
     uint8_t result = 0x00;
-    result |= HAL_GPIO_ReadPin(oled->data_port, oled->data_pins[0]) << 0;
-    result |= HAL_GPIO_ReadPin(oled->data_port, oled->data_pins[1]) << 1;
-    result |= HAL_GPIO_ReadPin(oled->data_port, oled->data_pins[2]) << 2;
-    result |= HAL_GPIO_ReadPin(oled->data_port, oled->data_pins[3]) << 3;
-    result |= HAL_GPIO_ReadPin(oled->data_port, oled->data_pins[4]) << 4;
-    result |= HAL_GPIO_ReadPin(oled->data_port, oled->data_pins[5]) << 5;
-    result |= HAL_GPIO_ReadPin(oled->data_port, oled->data_pins[6]) << 6;
-    result |= HAL_GPIO_ReadPin(oled->data_port, oled->data_pins[7]) << 7;
+    oled_clock(oled);
+    for (uint8_t i = 8 - bits; i < 8; ++i) {
+        result |= HAL_GPIO_ReadPin(oled->data_port, oled->data_pins[i]) << i;
+    }
     return result;
 }
 
@@ -53,10 +48,10 @@ uint8_t oled_read(oled0010_t* oled, GPIO_PinState rs_state)
 
     uint8_t result;
     if (oled->bits == OLED_FS_4BIT) {
-        result = oled_read_4bit(oled);
-        result |= oled_read_4bit(oled) >> 4;
+        result = oled_read_bits(oled, 4);
+        result |= oled_read_bits(oled, 4) >> 4;
     } else {
-        result = oled_read_8bit(oled);
+        result = oled_read_bits(oled, 8);
     }
     // Return to ouput
     init.Mode = GPIO_MODE_OUTPUT_PP;
@@ -65,25 +60,20 @@ uint8_t oled_read(oled0010_t* oled, GPIO_PinState rs_state)
     return result;
 }
 
-void oled_send_4bit(oled0010_t* oled, uint8_t data)
-{
-    HAL_GPIO_WritePin(oled->data_port, oled->data_pins[4], data & 0x10);
-    HAL_GPIO_WritePin(oled->data_port, oled->data_pins[5], data & 0x20);
-    HAL_GPIO_WritePin(oled->data_port, oled->data_pins[6], data & 0x40);
-    HAL_GPIO_WritePin(oled->data_port, oled->data_pins[7], data & 0x80);
-    oled_clock(oled);
-}
+/* void oled_send_4bit(oled0010_t* oled, uint8_t data) */
+/* { */
+/*     HAL_GPIO_WritePin(oled->data_port, oled->data_pins[4], data & 0x10); */
+/*     HAL_GPIO_WritePin(oled->data_port, oled->data_pins[5], data & 0x20); */
+/*     HAL_GPIO_WritePin(oled->data_port, oled->data_pins[6], data & 0x40); */
+/*     HAL_GPIO_WritePin(oled->data_port, oled->data_pins[7], data & 0x80); */
+/*     oled_clock(oled); */
+/* } */
 
-void oled_send_8bit(oled0010_t* oled, uint8_t data)
+void oled_send_bits(oled0010_t* oled, uint8_t data, uint8_t bits)
 {
-    HAL_GPIO_WritePin(oled->data_port, oled->data_pins[0], data & 0x01);
-    HAL_GPIO_WritePin(oled->data_port, oled->data_pins[1], data & 0x02);
-    HAL_GPIO_WritePin(oled->data_port, oled->data_pins[2], data & 0x04);
-    HAL_GPIO_WritePin(oled->data_port, oled->data_pins[3], data & 0x08);
-    HAL_GPIO_WritePin(oled->data_port, oled->data_pins[4], data & 0x10);
-    HAL_GPIO_WritePin(oled->data_port, oled->data_pins[5], data & 0x20);
-    HAL_GPIO_WritePin(oled->data_port, oled->data_pins[6], data & 0x40);
-    HAL_GPIO_WritePin(oled->data_port, oled->data_pins[7], data & 0x80);
+    for (uint8_t i = 8 - bits; i < 8; ++i) {
+        HAL_GPIO_WritePin(oled->data_port, oled->data_pins[i], data & (0x01 << i));
+    }
     oled_clock(oled);
 }
 
@@ -99,11 +89,11 @@ void oled_send(oled0010_t* oled, uint8_t data, GPIO_PinState rs_state)
     HAL_GPIO_WritePin(oled->rs_port, oled->rs_pin, rs_state);
     if (oled->bits == OLED_FS_4BIT) {
         // Send upper
-        oled_send_4bit(oled, data);
+        oled_send_bits(oled, data, 4);
         // Send lower
-        oled_send_4bit(oled, data << 4);
+        oled_send_bits(oled, data << 4, 4);
     } else {
-        oled_send_8bit(oled, data);
+        oled_send_bits(oled, data, 8);
     }
     // Wait until instruction complete
     while ((oled_read(oled, GPIO_PIN_RESET) & 0x80) > 0) {
@@ -161,6 +151,17 @@ void oled_shift_display(oled0010_t* oled, int8_t dir)
     }
     for (uint8_t i = 0; i < dir; ++i) {
         oled_send(oled, OLED_SHIFT_MODE_SET | RL, GPIO_PIN_RESET);
+    }
+}
+
+void oled_add_character(oled0010_t* oled,
+    uint8_t addr, uint8_t* char_data, uint8_t char_height)
+{
+    uint8_t addr = addr << (char_height == 8 ? 3 : 4);
+    oled_send(oled, OLED_SET_CGRAM | addr, GPIO_PIN_RESET);
+
+    for (uint8_t i = 0; i < height; ++i) {
+        oled_send(oled, char_data[i], GPIO_PIN_SET);
     }
 }
 
