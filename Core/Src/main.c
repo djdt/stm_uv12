@@ -339,7 +339,7 @@ int main(void)
             print_main(&oled, '\xf6', state.mode, state.remaining, state.delivered);
             break;
         case STATE_FINISHED:
-            print_main(&oled, '\xfa', state.mode, state.remaining, state.delivered);
+            print_main(&oled, '\xfe', state.mode, state.remaining, state.delivered);
             break;
         default:
             break;
