@@ -39,20 +39,42 @@ extern "C" {
 /* USER CODE BEGIN ET */
 enum DISPLAY_STATE {
     STATE_SPLASH,
-    STATE_MODE,
-    STATE_MAIN,
+
+    STATE_UV_SELECT,
+    STATE_DOSE_SELECT,
+    STATE_RATE_SELECT,
+
+    STATE_INIT,
+    STATE_PAUSED,
+    STATE_RUNNING,
+    STATE_FINISHED,
 };
 enum UVMODE {
-    UVA,
-    UVB,
-    UVC
+    UVMODE_A,
+    UVMODE_B,
+    UVMODE_C
+};
+enum UPDATE {
+    UPDATE_NONE = 0,
+    UPDATE_DISPLAY = 1,
+    UPDATE_DAC = 2,
+    UPDATE_ENABLE = 4,
 };
 typedef struct {
     enum DISPLAY_STATE display;
     enum UVMODE mode;
+    enum UPDATE update;
+
     uint8_t enabled;
     uint8_t dac;
-    uint8_t update;
+
+    uint16_t step;
+    uint32_t rate;
+    uint32_t dose;
+    uint32_t delivered;
+
+    uint32_t remaining;
+    uint32_t frame;
 } state_t;
 /* USER CODE END ET */
 
@@ -104,16 +126,19 @@ void Error_Handler(void);
 #define CS_DAC_Pin GPIO_PIN_7
 #define CS_DAC_GPIO_Port GPIOB
 /* USER CODE BEGIN Private defines */
+
 #define AREA 3.8f // cm2
 #define UVA_POWER_MAX 34.5f // mW
+#define UVB_POWER_MAX 0.0f // mW
 #define UVC_POWER_MAX 3.3f // mW
 
 #define DAC_MIN 16 // 30.0 mA
 #define DAC_MAX 252 // 0.0 mA
 #define DAC_STEPS (DAC_MAX - DAC_MIN)
 
-#define UV_FLUX_STEP(power) (power / (float)(DAC_STEPS) * 10.f / AREA) // J/m2/s
-#define UV_FLUX_INT_STEP_MJ(power) ((uint16_t)(UV_FLUX_STEP(power) * 1000.f))
+#define UVA_RATE_STEP ((uint32_t)((UVA_POWER_MAX * 10.f * 1000.f) / (AREA * DAC_STEPS))) // mJ/m2/s
+#define UVB_RATE_STEP ((uint32_t)((UVB_POWER_MAX * 10.f * 1000.f) / (AREA * DAC_STEPS))) // mJ/m2/s
+#define UVC_RATE_STEP ((uint32_t)((UVC_POWER_MAX * 10.f * 1000.f) / (AREA * DAC_STEPS))) // mJ/m2/s
 
 /* USER CODE END Private defines */
 

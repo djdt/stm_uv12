@@ -71,6 +71,10 @@ void oled_return_home(oled0010_t* oled);
 void oled_move_cursor(oled0010_t* oled, uint8_t x, uint8_t y);
 void oled_shift_display(oled0010_t* oled, int8_t dir);
 
+void oled_add_character(oled0010_t* oled,
+    uint8_t addr, const uint8_t* char_data, uint8_t char_height);
+
+void oled_print_char(oled0010_t* oled, char c);
 void oled_print(oled0010_t* oled, char* str);
 
 #endif /* ifndef _OLED_0010_H_ */

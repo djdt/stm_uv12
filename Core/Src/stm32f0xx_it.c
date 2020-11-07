@@ -54,7 +54,7 @@
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 uint16_t last_pin_pressed;
-uint8_t button_held = 0;
+uint16_t button_held = 0;
 /* USER CODE END 0 */
 
 /* External variables --------------------------------------------------------*/
@@ -152,6 +152,20 @@ void RTC_IRQHandler(void)
     /* USER CODE END RTC_IRQn 0 */
     HAL_RTC_AlarmIRQHandler(&hrtc);
     /* USER CODE BEGIN RTC_IRQn 1 */
+    if (state.display == STATE_RUNNING) {
+        state.delivered += state.rate;
+        state.remaining -= 1;
+        if (state.delivered > state.dose) {
+            state.display = STATE_FINISHED;
+            // Reset the timer
+            state.remaining = state.dose / state.rate + 1;
+            // Turn off
+            state.enabled = 0;
+            state.update |= UPDATE_ENABLE;
+        }
+    }
+    // Increment animation frames
+    state.frame += 1;
     /* USER CODE END RTC_IRQn 1 */
 }
 
@@ -182,23 +196,61 @@ void TIM14_IRQHandler(void)
         __HAL_TIM_SET_COUNTER(&htim14, 0);
         __HAL_TIM_CLEAR_IT(&htim14, TIM_IT_UPDATE);
         HAL_TIM_Base_Start_IT(&htim14);
-        button_held = 1;
+        button_held = 1000;
+    } else {
+        button_held += 50;
     }
+    uint8_t multiplier = button_held / 1000;
     /* USER CODE END TIM14_IRQn 0 */
     HAL_TIM_IRQHandler(&htim14);
     /* USER CODE BEGIN TIM14_IRQn 1 */
-    switch (last_pin_pressed) {
-    case S2_Pin:
-        if (state.dac > DAC_MIN) {
-            state.dac -= 1;
-            state.update = 0x02;
+    switch (state.display) {
+    case STATE_DOSE_SELECT:
+        switch (last_pin_pressed) {
+        case S2_Pin:
+            if (state.dose + 1000 * multiplier >= 1000000)
+                state.dose = 1000000;
+            else
+                state.dose += 1000 * multiplier;
+            break;
+        case S1_Pin:
+            if (state.dose < 1000 * multiplier)
+                state.dose = 0;
+            else
+                state.dose -= 1000 * multiplier;
+            break;
         }
         break;
-    case S1_Pin:
-        if (state.dac < DAC_MAX) {
-            state.dac += 1;
-            state.update = 0x02;
+    case STATE_RATE_SELECT:
+        switch (last_pin_pressed) {
+        case S2_Pin:
+            if (state.dac - multiplier < DAC_MIN) {
+                state.dac = DAC_MIN;
+            } else {
+                state.dac -= multiplier;
+            }
+            break;
+        case S1_Pin:
+            if (state.dac + multiplier > DAC_MAX - 1) {
+                state.dac = DAC_MAX - 1;
+            } else {
+                state.dac += multiplier;
+            }
+            break;
         }
+        state.rate = (DAC_STEPS - (state.dac - DAC_MIN)) * state.step;
+        break;
+    case STATE_PAUSED:
+    case STATE_FINISHED:
+        switch (last_pin_pressed) {
+        case S3_Pin:
+            state.display = STATE_UV_SELECT;
+            state.enabled = 0;
+            state.update = UPDATE_DISPLAY | UPDATE_ENABLE;
+            break;
+        }
+        break;
+    default:
         break;
     }
     /* USER CODE END TIM14_IRQn 1 */
@@ -215,50 +267,114 @@ void HAL_GPIO_EXTI_Callback(uint16_t pin)
         HAL_TIM_Base_Init(&htim14);
         __HAL_TIM_SET_COUNTER(&htim14, 0);
         __HAL_TIM_CLEAR_IT(&htim14, TIM_IT_UPDATE);
+        HAL_TIM_Base_Start(&htim14);
         HAL_TIM_Base_Start_IT(&htim14);
     } else {
         uint16_t len = __HAL_TIM_GET_COUNTER(&htim14);
         if (!button_held && len > SHORT_PRESS) {
-            if (state.display == STATE_SPLASH) {
-                state.display = STATE_MODE;
-                state.update |= 0x80;
-
-            } else if (state.display == STATE_MODE) {
-                switch (pin) {
-                case S2_Pin:
-                    state.display = STATE_MAIN;
-                    state.mode = UVA;
-                    state.update |= 0x83;
-                    break;
-                case S1_Pin:
-                    state.display = STATE_MAIN;
-                    state.mode = UVC;
-                    state.update |= 0x83;
-                    break;
-                }
-
-            } else if (state.display == STATE_MAIN) {
+            switch (state.display) {
+            case STATE_SPLASH:
+                state.display = STATE_UV_SELECT;
+                state.update = UPDATE_DISPLAY;
+                break;
+            case STATE_UV_SELECT:
                 switch (pin) {
                 case S3_Pin:
-                    state.enabled ^= 1;
-                    state.update |= 0x01;
+                    state.display = STATE_DOSE_SELECT;
+                    state.update = UPDATE_DISPLAY;
+                    if (state.mode == UVMODE_A)
+                        state.step = UVA_RATE_STEP;
+                    else if (state.mode == UVMODE_B)
+                        state.step = UVB_RATE_STEP;
+                    else
+                        state.step = UVC_RATE_STEP;
+                    state.rate = (DAC_STEPS - (state.dac - DAC_MIN)) * state.step;
+                    break;
+                case S2_Pin:
+                    if (state.mode > 0)
+                        state.mode -= 1;
+                    else
+                        state.mode = UVMODE_C;
+                    break;
+                case S1_Pin:
+                    state.mode += 1;
+                    if (state.mode > UVMODE_C)
+                        state.mode = UVMODE_A;
+                    break;
+                }
+                break;
+            case STATE_DOSE_SELECT:
+                switch (pin) {
+                case S3_Pin:
+                    state.display = STATE_RATE_SELECT;
+                    state.update = UPDATE_DISPLAY;
+                    break;
+                case S2_Pin:
+                    if (state.dose < 1000000)
+                        state.dose += 1000;
+                    break;
+                case S1_Pin:
+                    if (state.dose > 0)
+                        state.dose -= 1000;
+                    break;
+                }
+                break;
+            case STATE_RATE_SELECT:
+                switch (pin) {
+                case S3_Pin:
+                    state.delivered = 0;
+                    state.remaining = state.dose / state.rate + 1;
+
+                    state.display = STATE_PAUSED;
+                    state.enabled = 0;
+                    state.update = UPDATE_DISPLAY | UPDATE_DAC | UPDATE_ENABLE;
                     break;
                 case S2_Pin:
                     if (state.dac > DAC_MIN) {
                         state.dac -= 1;
-                        state.update |= 0x02;
+                        state.rate = (DAC_STEPS - (state.dac - DAC_MIN)) * state.step;
                     }
                     break;
                 case S1_Pin:
-                    if (state.dac < DAC_MAX) {
+                    if (state.dac < DAC_MAX - 1) {
                         state.dac += 1;
-                        state.update |= 0x02;
+                        state.rate = (DAC_STEPS - (state.dac - DAC_MIN)) * state.step;
                     }
                     break;
                 }
+                break;
+            case STATE_PAUSED:
+                switch (pin) {
+                case S3_Pin:
+                    state.display = STATE_RUNNING;
+                    state.enabled = 1;
+                    state.update |= UPDATE_ENABLE;
+                    break;
+                }
+                break;
+            case STATE_RUNNING:
+                switch (pin) {
+                case S3_Pin:
+                    state.display = STATE_PAUSED;
+                    state.enabled = 0;
+                    state.update |= UPDATE_ENABLE;
+                    break;
+                }
+                break;
+            case STATE_FINISHED:
+                switch (pin) {
+                case S3_Pin:
+                    state.delivered = 0;
+                    /* state.remaining = state.dose / state.rate + 1; */
+                    state.display = STATE_PAUSED;
+                    break;
+                }
+                break;
+            default:
+                break;
             }
+            // Long presses handled in TIM14_IRQHandler
         }
-        // Long presses handled in TIM14_IRQHandler
         HAL_TIM_Base_Stop_IT(&htim14);
     }
     button_held = 0;
