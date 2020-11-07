@@ -130,7 +130,7 @@ void oled_shift_display(oled0010_t* oled, int8_t dir)
 }
 
 void oled_add_character(oled0010_t* oled,
-    uint8_t addr, uint8_t* char_data, uint8_t char_height)
+    uint8_t addr, const uint8_t* char_data, uint8_t char_height)
 {
     addr = addr << (char_height == 8 ? 3 : 4);
     oled_send(oled, OLED_SET_CGRAM | addr, GPIO_PIN_RESET);

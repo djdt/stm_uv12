@@ -166,8 +166,6 @@ void RTC_IRQHandler(void)
     }
     // Increment animation frames
     state.frame += 1;
-    if (state.frame >= CELL_ANIMATION_FRAMES)
-        state.frame = 0;
     /* USER CODE END RTC_IRQn 1 */
 }
 

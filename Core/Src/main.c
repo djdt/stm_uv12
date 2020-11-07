@@ -22,6 +22,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+/* #include "animation.h" */
 #include "mcp48fvb.h"
 #include "oled0010.h"
 /* USER CODE END Includes */
@@ -75,10 +76,6 @@ const char rate_units[] = "W/m"
                           "\x1e";
 uint8_t len_rate_units = 4;
 
-const uint8_t cell_f1[8] = {0x00, 0x04, 0x0a, 0x11, 0x15, 0x11, 0x0e, 0x00};
-const uint8_t cell_f2[8] = {0x00, 0x00, 0x06, 0x09, 0x15, 0x11, 0x0e, 0x00};
-const uint8_t cell_f3[8] = {0x00, 0x06, 0x09, 0x15, 0x11, 0x09, 0x06, 0x00};
-const uint8_t cell_f4[8] = {0x00, 0x0c, 0x12, 0x15, 0x11, 0x0e, 0x00, 0x00};
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -243,8 +240,6 @@ void print_main(oled0010_t* oled, char sym, enum UVMODE mode, uint32_t seconds, 
 
     uint32_t len = get_decimal_string(strbuf, delivered, 3);
     oled_move_cursor(oled, 0, 1);
-    oled_print_char(oled, CELL_ANIMATION_ADR + state.frame);
-
     oled_pad(oled, 15 - len - (len_dose_units + 1));
     oled_print(oled, strbuf);
     oled_print_char(oled, ' ');
@@ -301,10 +296,9 @@ int main(void)
         OLED_DC_BLINK_OFF | OLED_DC_CURSOR_OFF,
         OLED_EM_INC | OLED_EM_DISP_SHIFT_OFF);
 
-    oled_add_character(&oled, CELL_ANIMATION_ADR + 0x00, (uint8_t*)cell_f1, 8);
-    oled_add_character(&oled, CELL_ANIMATION_ADR + 0x01, (uint8_t*)cell_f2, 8);
-    oled_add_character(&oled, CELL_ANIMATION_ADR + 0x02, (uint8_t*)cell_f3, 8);
-    oled_add_character(&oled, CELL_ANIMATION_ADR + 0x03, (uint8_t*)cell_f4, 8);
+    /* for (uint8_t i = 0; i < ANIMATION_FRAMES; ++i) { */
+    /*     oled_add_character(&oled, i, frames[i], 8); */
+    /* } */
 
     // Print welcome message
     print_splash(&oled);
@@ -317,7 +311,6 @@ int main(void)
     /* Infinite loop */
     /* USER CODE BEGIN WHILE */
     while (1) {
-
         /* HAL_NVIC_DisableIRQ(RTC_IRQn); */
         if (state.update & UPDATE_DISPLAY) {
             oled_clear_display(&oled);
