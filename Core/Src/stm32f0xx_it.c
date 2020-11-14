@@ -154,14 +154,18 @@ void RTC_IRQHandler(void)
     /* USER CODE BEGIN RTC_IRQn 1 */
     if (state.display == STATE_RUNNING) {
         state.delivered += state.rate;
-        state.remaining -= 1;
-        if (state.delivered > state.dose) {
-            state.display = STATE_FINISHED;
-            // Reset the timer
-            state.remaining = state.dose / state.rate + 1;
-            // Turn off
-            state.enabled = 0;
-            state.update |= UPDATE_ENABLE;
+        if (state.dose == 0) {
+            state.remaining += 1;
+        } else {
+            state.remaining -= 1;
+            if (state.delivered > state.dose) {
+                state.display = STATE_FINISHED;
+                // Reset the timer
+                state.remaining = state.dose / state.rate + 1;
+                // Turn off
+                state.enabled = 0;
+                state.update |= UPDATE_ENABLE;
+            }
         }
     }
     // Increment animation frames
