@@ -127,18 +127,18 @@ void Error_Handler(void);
 #define CS_DAC_GPIO_Port GPIOB
 /* USER CODE BEGIN Private defines */
 
-#define AREA 3.8f // cm2
-#define UVA_POWER_MAX 34.5f // mW
-#define UVB_POWER_MAX 0.0f // mW
-#define UVC_POWER_MAX 3.3f // mW
-
 #define DAC_MIN 16 // 30.0 mA
 #define DAC_MAX 252 // 0.0 mA
 #define DAC_STEPS (DAC_MAX - DAC_MIN)
 
-#define UVA_RATE_STEP ((uint32_t)((UVA_POWER_MAX * 10.f * 1000.f) / (AREA * DAC_STEPS))) // mJ/m2/s
-#define UVB_RATE_STEP ((uint32_t)((UVB_POWER_MAX * 10.f * 1000.f) / (AREA * DAC_STEPS))) // mJ/m2/s
-#define UVC_RATE_STEP ((uint32_t)((UVC_POWER_MAX * 10.f * 1000.f) / (AREA * DAC_STEPS))) // mJ/m2/s
+// Calulated from datasheet power, angle of half intensity
+
+#define UVA_RATE_MAX 11763 // mJ/m2/s
+#define UVB_RATE_MAX 0 // mJ/m2/s
+#define UVC_RATE_MAX 921 // mJ/m2/s
+#define UVA_RATE_STEP (UVA_RATE_MAX / DAC_STEPS)
+#define UVB_RATE_STEP (UVB_RATE_MAX / DAC_STEPS)
+#define UVC_RATE_STEP (UVC_RATE_MAX / DAC_STEPS)
 
 /* USER CODE END Private defines */
 
