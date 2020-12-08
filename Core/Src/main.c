@@ -66,7 +66,7 @@ oled0010_t oled = {
 
 state_t state = { STATE_SPLASH, UVMODE_A, UPDATE_NONE,
     0, DAC_MAX - 1,
-    0, 0, 1000, 0 };
+    0, 0, DOSE_STEP_SIZE, 0 };
 
 char strbuf[16];
 const char dose_units[] = "J/m"
@@ -100,16 +100,23 @@ void get_time_string(char* str, RTC_TimeTypeDef* t)
     str[4] = (t->Seconds & 0x0f) + '0';
 }
 
-void get_seconds_string(char* str, uint16_t seconds)
+uint8_t get_seconds_string(char* str, uint16_t seconds)
 {
-    uint8_t m = seconds / 60;
+    uint8_t h = seconds / 3600;
+    uint8_t m = (seconds / 60) % 60;
     uint8_t s = seconds % 60;
 
-    str[0] = m / 10 + '0';
-    str[1] = m % 10 + '0';
-    str[2] = ':';
-    str[3] = s / 10 + '0';
-    str[4] = s % 10 + '0';
+    uint8_t i = 0;
+    str[i++] = h / 10 + '0';
+    str[i++] = h % 10 + '0';
+    str[i++] = ':';
+    str[i++] = m / 10 + '0';
+    str[i++] = m % 10 + '0';
+    str[i++] = ':';
+    str[i++] = s / 10 + '0';
+    str[i++] = s % 10 + '0';
+    str[i] = '\0';
+    return i;
 }
 
 uint8_t get_int_string(char* str, uint32_t n)
@@ -230,17 +237,17 @@ void print_rate_select(oled0010_t* oled, uint32_t rate)
 
 void print_main(oled0010_t* oled, char sym, enum UVMODE mode, uint32_t seconds, uint32_t delivered)
 {
-    get_seconds_string(strbuf, seconds);
+    uint8_t len = get_seconds_string(strbuf, seconds);
     oled_move_cursor(oled, 0, 0);
     oled_print(oled, mode == UVMODE_A ? "UVA" : (mode == UVMODE_B ? "UVB" : "UVC"));
     oled_move_cursor(oled, 4, 0);
     oled_print_char(oled, sym);
-    oled_move_cursor(oled, 16 - 5, 0);
+    oled_move_cursor(oled, 16 - len, 0);
     oled_print(oled, strbuf);
 
-    uint32_t len = get_decimal_string(strbuf, delivered, 3);
+    len = get_decimal_string(strbuf, delivered, 3);
     oled_move_cursor(oled, 0, 1);
-    oled_pad(oled, 15 - len - (len_dose_units + 1));
+    oled_pad(oled, 15 - len - len_dose_units);
     oled_print(oled, strbuf);
     oled_print_char(oled, ' ');
     oled_print(oled, (char*)dose_units);

@@ -314,12 +314,16 @@ void HAL_GPIO_EXTI_Callback(uint16_t pin)
                     state.update = UPDATE_DISPLAY;
                     break;
                 case S2_Pin:
-                    if (state.dose < 1000000)
-                        state.dose += 1000;
+                    if (state.dose + DOSE_STEP_SIZE < DOSE_MAX)
+                        state.dose += DOSE_STEP_SIZE;
+                    else
+                        state.dose = DOSE_MAX;
                     break;
                 case S1_Pin:
-                    if (state.dose > 0)
-                        state.dose -= 1000;
+                    if (state.dose - DOSE_STEP_SIZE > 0)
+                        state.dose -= DOSE_STEP_SIZE;
+                    else
+                        state.dose = 0;
                     break;
                 }
                 break;
@@ -337,16 +341,20 @@ void HAL_GPIO_EXTI_Callback(uint16_t pin)
                     state.update = UPDATE_DISPLAY | UPDATE_DAC | UPDATE_ENABLE;
                     break;
                 case S2_Pin:
-                    if (state.dac > DAC_MIN) {
-                        state.dac -= 1;
-                        state.rate = (DAC_STEPS - (state.dac - DAC_MIN)) * state.step;
+                    if (state.dac - DAC_STEP_SIZE > DAC_MIN) {
+                        state.dac -= DAC_STEP_SIZE;
+                    } else {
+                        state.dac = DAC_MIN;
                     }
+                    state.rate = (DAC_STEPS - (state.dac - DAC_MIN)) * state.step;
                     break;
                 case S1_Pin:
-                    if (state.dac < DAC_MAX - 1) {
-                        state.dac += 1;
-                        state.rate = (DAC_STEPS - (state.dac - DAC_MIN)) * state.step;
+                    if (state.dac + DAC_STEP_SIZE < DAC_MAX - 1) {
+                        state.dac += DAC_STEP_SIZE;
+                    } else {
+                        state.dac = DAC_MAX - 1;
                     }
+                    state.rate = (DAC_STEPS - (state.dac - DAC_MIN)) * state.step;
                     break;
                 }
                 break;
