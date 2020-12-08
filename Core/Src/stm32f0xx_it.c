@@ -19,8 +19,8 @@
 /* USER CODE END Header */
 
 /* Includes ------------------------------------------------------------------*/
-#include "main.h"
 #include "stm32f0xx_it.h"
+#include "main.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 /* USER CODE END Includes */
@@ -73,12 +73,12 @@ extern TIM_HandleTypeDef htim14;
   */
 void NMI_Handler(void)
 {
-  /* USER CODE BEGIN NonMaskableInt_IRQn 0 */
+    /* USER CODE BEGIN NonMaskableInt_IRQn 0 */
 
-  /* USER CODE END NonMaskableInt_IRQn 0 */
-  /* USER CODE BEGIN NonMaskableInt_IRQn 1 */
+    /* USER CODE END NonMaskableInt_IRQn 0 */
+    /* USER CODE BEGIN NonMaskableInt_IRQn 1 */
 
-  /* USER CODE END NonMaskableInt_IRQn 1 */
+    /* USER CODE END NonMaskableInt_IRQn 1 */
 }
 
 /**
@@ -86,14 +86,13 @@ void NMI_Handler(void)
   */
 void HardFault_Handler(void)
 {
-  /* USER CODE BEGIN HardFault_IRQn 0 */
+    /* USER CODE BEGIN HardFault_IRQn 0 */
 
-  /* USER CODE END HardFault_IRQn 0 */
-  while (1)
-  {
-    /* USER CODE BEGIN W1_HardFault_IRQn 0 */
-    /* USER CODE END W1_HardFault_IRQn 0 */
-  }
+    /* USER CODE END HardFault_IRQn 0 */
+    while (1) {
+        /* USER CODE BEGIN W1_HardFault_IRQn 0 */
+        /* USER CODE END W1_HardFault_IRQn 0 */
+    }
 }
 
 /**
@@ -101,12 +100,12 @@ void HardFault_Handler(void)
   */
 void SVC_Handler(void)
 {
-  /* USER CODE BEGIN SVC_IRQn 0 */
+    /* USER CODE BEGIN SVC_IRQn 0 */
 
-  /* USER CODE END SVC_IRQn 0 */
-  /* USER CODE BEGIN SVC_IRQn 1 */
+    /* USER CODE END SVC_IRQn 0 */
+    /* USER CODE BEGIN SVC_IRQn 1 */
 
-  /* USER CODE END SVC_IRQn 1 */
+    /* USER CODE END SVC_IRQn 1 */
 }
 
 /**
@@ -114,12 +113,12 @@ void SVC_Handler(void)
   */
 void PendSV_Handler(void)
 {
-  /* USER CODE BEGIN PendSV_IRQn 0 */
+    /* USER CODE BEGIN PendSV_IRQn 0 */
 
-  /* USER CODE END PendSV_IRQn 0 */
-  /* USER CODE BEGIN PendSV_IRQn 1 */
+    /* USER CODE END PendSV_IRQn 0 */
+    /* USER CODE BEGIN PendSV_IRQn 1 */
 
-  /* USER CODE END PendSV_IRQn 1 */
+    /* USER CODE END PendSV_IRQn 1 */
 }
 
 /**
@@ -127,13 +126,13 @@ void PendSV_Handler(void)
   */
 void SysTick_Handler(void)
 {
-  /* USER CODE BEGIN SysTick_IRQn 0 */
+    /* USER CODE BEGIN SysTick_IRQn 0 */
 
-  /* USER CODE END SysTick_IRQn 0 */
-  HAL_IncTick();
-  /* USER CODE BEGIN SysTick_IRQn 1 */
+    /* USER CODE END SysTick_IRQn 0 */
+    HAL_IncTick();
+    /* USER CODE BEGIN SysTick_IRQn 1 */
 
-  /* USER CODE END SysTick_IRQn 1 */
+    /* USER CODE END SysTick_IRQn 1 */
 }
 
 /******************************************************************************/
@@ -148,11 +147,11 @@ void SysTick_Handler(void)
   */
 void RTC_IRQHandler(void)
 {
-  /* USER CODE BEGIN RTC_IRQn 0 */
+    /* USER CODE BEGIN RTC_IRQn 0 */
 
-  /* USER CODE END RTC_IRQn 0 */
-  HAL_RTC_AlarmIRQHandler(&hrtc);
-  /* USER CODE BEGIN RTC_IRQn 1 */
+    /* USER CODE END RTC_IRQn 0 */
+    HAL_RTC_AlarmIRQHandler(&hrtc);
+    /* USER CODE BEGIN RTC_IRQn 1 */
     if (state.display == STATE_RUNNING) {
         state.delivered += state.rate;
         if (state.dose == 0) {
@@ -171,7 +170,7 @@ void RTC_IRQHandler(void)
     }
     // Increment animation frames
     state.frame += 1;
-  /* USER CODE END RTC_IRQn 1 */
+    /* USER CODE END RTC_IRQn 1 */
 }
 
 /**
@@ -179,13 +178,13 @@ void RTC_IRQHandler(void)
   */
 void EXTI4_15_IRQHandler(void)
 {
-  /* USER CODE BEGIN EXTI4_15_IRQn 0 */
-  /* USER CODE END EXTI4_15_IRQn 0 */
-  HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_8);
-  HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_9);
-  HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_10);
-  /* USER CODE BEGIN EXTI4_15_IRQn 1 */
-  /* USER CODE END EXTI4_15_IRQn 1 */
+    /* USER CODE BEGIN EXTI4_15_IRQn 0 */
+    /* USER CODE END EXTI4_15_IRQn 0 */
+    HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_8);
+    HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_9);
+    HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_10);
+    /* USER CODE BEGIN EXTI4_15_IRQn 1 */
+    /* USER CODE END EXTI4_15_IRQn 1 */
 }
 
 /**
@@ -193,7 +192,7 @@ void EXTI4_15_IRQHandler(void)
   */
 void TIM14_IRQHandler(void)
 {
-  /* USER CODE BEGIN TIM14_IRQn 0 */
+    /* USER CODE BEGIN TIM14_IRQn 0 */
     if (!button_held) {
         // Fast timer
         htim14.Init.Period = 50;
@@ -206,40 +205,40 @@ void TIM14_IRQHandler(void)
         button_held += 50;
     }
     uint8_t multiplier = button_held / 1000;
-  /* USER CODE END TIM14_IRQn 0 */
-  HAL_TIM_IRQHandler(&htim14);
-  /* USER CODE BEGIN TIM14_IRQn 1 */
+    /* USER CODE END TIM14_IRQn 0 */
+    HAL_TIM_IRQHandler(&htim14);
+    /* USER CODE BEGIN TIM14_IRQn 1 */
     switch (state.display) {
     case STATE_DOSE_SELECT:
         switch (last_pin_pressed) {
         case S2_Pin:
-            if (state.dose + 1000 * multiplier >= 1000000)
-                state.dose = 1000000;
+            if (state.dose + DOSE_STEP_SIZE * multiplier >= DOSE_MAX)
+                state.dose = DOSE_MAX;
             else
-                state.dose += 1000 * multiplier;
+                state.dose += DOSE_STEP_SIZE * multiplier;
             break;
         case S1_Pin:
-            if (state.dose < 1000 * multiplier)
+            if (state.dose < DOSE_STEP_SIZE * multiplier)
                 state.dose = 0;
             else
-                state.dose -= 1000 * multiplier;
+                state.dose -= DOSE_STEP_SIZE * multiplier;
             break;
         }
         break;
     case STATE_RATE_SELECT:
         switch (last_pin_pressed) {
         case S2_Pin:
-            if (state.dac - multiplier < DAC_MIN) {
+            if (state.dac - DAC_STEP_SIZE * multiplier < DAC_MIN) {
                 state.dac = DAC_MIN;
             } else {
-                state.dac -= multiplier;
+                state.dac -= DAC_STEP_SIZE * multiplier;
             }
             break;
         case S1_Pin:
-            if (state.dac + multiplier > DAC_MAX - 1) {
+            if (state.dac + DAC_STEP_SIZE * multiplier > DAC_MAX - 1) {
                 state.dac = DAC_MAX - 1;
             } else {
-                state.dac += multiplier;
+                state.dac += DAC_STEP_SIZE * multiplier;
             }
             break;
         }
@@ -258,7 +257,7 @@ void TIM14_IRQHandler(void)
     default:
         break;
     }
-  /* USER CODE END TIM14_IRQn 1 */
+    /* USER CODE END TIM14_IRQn 1 */
 }
 
 /* USER CODE BEGIN 1 */

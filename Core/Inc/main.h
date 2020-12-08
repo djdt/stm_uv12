@@ -127,12 +127,19 @@ void Error_Handler(void);
 #define CS_DAC_GPIO_Port GPIOB
 /* USER CODE BEGIN Private defines */
 
+// General Settings
+#define DOSE_MAX 10 * 1000 * 1000
+#define DOSE_STEP_SIZE 10 * 1000
+
+// DAC
 #define DAC_MIN 16 // 30.0 mA
 #define DAC_MAX 252 // 0.0 mA
 #define DAC_STEPS (DAC_MAX - DAC_MIN)
+#define DAC_STEP_SIZE 1
 
 // Calulated from datasheet power, angle of half intensity
 
+// UV Rates
 #define UVA_RATE_MAX 11763 // mJ/m2/s
 #define UVB_RATE_MAX 0 // mJ/m2/s
 #define UVC_RATE_MAX 921 // mJ/m2/s

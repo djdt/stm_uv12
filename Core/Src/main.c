@@ -173,7 +173,7 @@ void print_splash(oled0010_t* oled)
                      "Cell Destroyer"
                      "\x1d");
     oled_move_cursor(oled, 10, 1);
-    oled_print(oled, "v0.2.0");
+    oled_print(oled, "v0.2.1");
 }
 
 void print_uv_select(oled0010_t* oled, enum UVMODE mode)
@@ -294,10 +294,6 @@ int main(void)
         OLED_FS_4BIT | OLED_FS_2LINES | OLED_FS_FONT_SMALL | OLED_FS_FONT_WEST_EUR2,
         OLED_DC_BLINK_OFF | OLED_DC_CURSOR_OFF,
         OLED_EM_INC | OLED_EM_DISP_SHIFT_OFF);
-
-    /* for (uint8_t i = 0; i < ANIMATION_FRAMES; ++i) { */
-    /*     oled_add_character(&oled, i, frames[i], 8); */
-    /* } */
 
     // Print welcome message
     print_splash(&oled);
