@@ -65,7 +65,7 @@ oled0010_t oled = {
 };
 
 state_t state = { STATE_SPLASH, UVMODE_A, UPDATE_NONE,
-    0, DAC_MAX - 1,
+    0, DAC_MIN,
     0, 0, DOSE_STEP_SIZE, 0 };
 
 char strbuf[16];
@@ -180,7 +180,7 @@ void print_splash(oled0010_t* oled)
                      "Cell Destroyer"
                      "\x1d");
     oled_move_cursor(oled, 10, 1);
-    oled_print(oled, "v0.2.1");
+    oled_print(oled, "v0.2.2");
 }
 
 void print_uv_select(oled0010_t* oled, enum UVMODE mode)

@@ -129,7 +129,7 @@ void Error_Handler(void);
 
 // General Settings
 #define DOSE_MAX 10 * 1000 * 1000
-#define DOSE_STEP_SIZE 10 * 1000
+#define DOSE_STEP_SIZE 100 * 1000
 
 // DAC
 #define DAC_MIN 16 // 30.0 mA
